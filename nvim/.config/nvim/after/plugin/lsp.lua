@@ -4,18 +4,6 @@ lsp.preset('recommended')
 
 -- https://github.com/williamboman/mason-lspconfig.nvim/blob/main/doc/server-mapping.md
 
-lsp.ensure_installed({
-    'tsserver',
-    'eslint',
-    'lua_ls',
-    'rust_analyzer',
-    'bashls',
-    'yamlls',
-    'html',
-    'jsonls',
-    'awk_ls',
-})
-
 -- Fix Undefined global 'vim'
 lsp.configure('lua_ls', {
     settings = {
@@ -87,10 +75,20 @@ end)
 
 require("mason").setup({})
 require("mason-lspconfig").setup({
-    --ensure_installed = {"tsserver"}
+    ensure_installed = {
+        'tsserver',
+        'eslint',
+        'lua_ls',
+        'rust_analyzer',
+        'bashls',
+        'yamlls',
+        'html',
+        'jsonls',
+        'awk_ls',
+    },
     handlers = {
         lsp.default_setup
-    }
+    },
 })
 
 lsp.setup()
