@@ -81,19 +81,16 @@ lsp.on_attach(function(client, bufnr)
     vim.keymap.set("i", "<C-h>", function() vim.lsp.buf.signature_help() end, opts)
 end)
 
+local servers = {
+    'lua_ls',
+    'bashls',
+    'yamlls',
+    'html',
+    'jsonls',
+};
 require("mason").setup({})
 require("mason-lspconfig").setup({
-    ensure_installed = {
-        'tsserver',
-        'eslint',
-        'lua_ls',
-        'rust_analyzer',
-        'bashls',
-        'yamlls',
-        'html',
-        'jsonls',
-        'awk_ls',
-    },
+    ensure_installed = servers,
     handlers = {
         lsp.default_setup
     },

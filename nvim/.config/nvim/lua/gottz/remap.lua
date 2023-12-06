@@ -55,6 +55,23 @@ vim.keymap.set("n", "<leader>fml", "<cmd>CellularAutomaton make_it_rain<CR>");
 vim.keymap.set("n", "<leader>t", ":term<CR>")
 vim.keymap.set("t", "<Esc>(", "<C-\\><C-n>")
 
+vim.keymap.set("n", "<F24>", "<cmd>set paste<CR>i")
+vim.keymap.set("n", "<F12>", "<cmd>set paste<CR>i")
+
+vim.api.nvim_create_autocmd("InsertLeave", {
+    pattern = "*",
+    command = "set nopaste",
+})
+
+vim.api.nvim_create_autocmd("InsertEnter", {
+    pattern = "*",
+    command = "setlocal norelativenumber",
+})
+vim.api.nvim_create_autocmd("InsertLeave", {
+    pattern = "*",
+    command = "setlocal relativenumber",
+})
+
 --vim.keymap.set("n", "<leader><TAB>", ":bn<CR>")
 --vim.keymap.set("n", "<S-TAB>", ":bp<CR>")
 
@@ -109,5 +126,3 @@ end
 -- fix selection with: https://stackoverflow.com/questions/42714836/setpos-and-getpos-strange-behavior-in-vim
 vim.keymap.set({ "v", "n" }, "<leader>qr", function() gen_qr(get_visual_selection()) end)
 vim.keymap.set("n", "<leader>qqr", function() overlay.close() end)
-
--- Hallo ballo!

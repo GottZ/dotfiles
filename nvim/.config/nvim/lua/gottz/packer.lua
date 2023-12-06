@@ -59,6 +59,7 @@ return require('packer').startup(function(use)
             { 'hrsh7th/cmp-nvim-lua' },
 
             { 'simrat39/rust-tools.nvim' },
+            { 'j-hui/fidget.nvim' },
 
             -- Snippets
             { 'L3MON4D3/LuaSnip' },
@@ -77,4 +78,33 @@ return require('packer').startup(function(use)
             require('crates').setup()
         end,
     }
+
+    use({
+        'folke/which-key.nvim',
+        as = "which-key",
+        config = function()
+            vim.o.timeout = true
+            vim.o.timeoutlen = 300
+            require("which-key").setup()
+        end,
+    })
+
+    use({
+        'lukas-reineke/indent-blankline.nvim',
+        as = 'ibl',
+        config = function()
+            local highlight = {
+                "FloatShadow",
+                "Whitespace",
+            }
+            require("ibl").setup {
+                indent = { highlight = highlight, char = "" },
+                whitespace = {
+                    highlight = highlight,
+                    remove_blankline_trail = false,
+                },
+                --scope = { enabled = false },
+            }
+        end,
+    })
 end)
