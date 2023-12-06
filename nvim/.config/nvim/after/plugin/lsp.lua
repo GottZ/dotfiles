@@ -85,6 +85,14 @@ lsp.on_attach(function(client, bufnr)
     vim.keymap.set("i", "<C-h>", function() vim.lsp.buf.signature_help() end, opts)
 end)
 
+require("mason").setup({})
+require("mason-lspconfig").setup({
+    --ensure_installed = {"tsserver"}
+    handlers = {
+        lsp.default_setup
+    }
+})
+
 lsp.setup()
 
 vim.diagnostic.config({
