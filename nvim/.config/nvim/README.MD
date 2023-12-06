@@ -4,6 +4,8 @@ such neovim so awesome!
 
 to be done
 
+install ripgrep and unzip
+
 source packer.lua and run this:
 :PackerUpdate
 
