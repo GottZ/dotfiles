@@ -32,7 +32,7 @@ vim.keymap.set({ "n", "v" }, "<leader>d", [["_d]])
 vim.keymap.set("i", "<C-c>", "<Esc>")
 
 vim.keymap.set("n", "Q", "<nop>")
-vim.keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")
+--vim.keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<CR>")
 vim.keymap.set("n", "<leader>f", vim.lsp.buf.format)
 
 vim.keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
@@ -43,9 +43,9 @@ vim.keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
 vim.keymap.set("n", "<leader>s", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]])
 --vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true })
 
-vim.keymap.set("n", "<leader>vpp", "<cmd>e ~/.dotfiles/nvim/.config/nvim/lua/gottz/packer.lua<CR>");
-vim.keymap.set("n", "<leader>vpr", "<cmd>e ~/.dotfiles/nvim/.config/nvim/lua/gottz/remap.lua<CR>");
-vim.keymap.set("n", "<leader>vps", "<cmd>e ~/.dotfiles/nvim/.config/nvim/lua/gottz/set.lua<CR>");
+vim.keymap.set("n", "<leader>vpp", "<cmd>e ~/.config/nvim/lua/gottz/packer.lua<CR>");
+vim.keymap.set("n", "<leader>vpr", "<cmd>e ~/.config/nvim/lua/gottz/remap.lua<CR>");
+vim.keymap.set("n", "<leader>vps", "<cmd>e ~/.config/nvim/lua/gottz/set.lua<CR>");
 vim.keymap.set("n", "<leader>fml", "<cmd>CellularAutomaton make_it_rain<CR>");
 
 vim.keymap.set("n", "<leader><leader>", function()
@@ -107,7 +107,7 @@ end
 
 -- buffer shizz https://jacobsimpson.github.io/nvim-lua-manual/docs/buffers-and-windows/
 -- fix selection with: https://stackoverflow.com/questions/42714836/setpos-and-getpos-strange-behavior-in-vim
-vim.keymap.set({"v", "n"}, "<leader>qr", function() gen_qr(get_visual_selection()) end)
+vim.keymap.set({ "v", "n" }, "<leader>qr", function() gen_qr(get_visual_selection()) end)
 vim.keymap.set("n", "<leader>qqr", function() overlay.close() end)
 
 -- Hallo ballo!
