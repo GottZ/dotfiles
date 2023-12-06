@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
-ln -s ./nvim/.config/nvim ~/.config/nvim
-ln -s ./tmux/.config/tmux ~/.config/tmux
+root="$( dirname -- "$( readlink -f -- "$0"; )"; )"
+rm -rf ~/.config/nvim
+rm -rf ~/.config/tmux
+ln -s "$root/nvim/.config/nvim" ~/.config/nvim
+ln -s "$root/tmux/.config/tmux" ~/.config/tmux
