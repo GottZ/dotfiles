@@ -48,9 +48,9 @@ vim.keymap.set("n", "<leader>vpr", "<cmd>e ~/.config/nvim/lua/gottz/remap.lua<CR
 vim.keymap.set("n", "<leader>vps", "<cmd>e ~/.config/nvim/lua/gottz/set.lua<CR>");
 vim.keymap.set("n", "<leader>fml", "<cmd>CellularAutomaton make_it_rain<CR>");
 
-vim.keymap.set("n", "<leader><leader>", function()
-    vim.cmd("so")
-end)
+--vim.keymap.set("n", "<leader><leader>", function()
+--    vim.cmd("so")
+--end)
 
 vim.keymap.set("n", "<leader>t", ":term<CR>")
 vim.keymap.set("t", "<Esc>(", "<C-\\><C-n>")
