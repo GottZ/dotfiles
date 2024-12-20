@@ -1,0 +1,36 @@
+export HISTSIZE=1000000
+export SAVEHIST=1000000
+setopt hist_ignore_all_dups
+setopt hist_ignore_space
+
+# this configuration is part of https://github.com/GottZ/dotfiles
+
+# this config relies heavily on grml zsh.
+# if you are on arch, simply run pacman -S grml-zsh-config
+# otherwise: wget -O /etc/zsh/zshrc https://git.grml.org/f/grml-etc-core/etc/zsh/zshrc
+# this config file will be automatically inherited by the grml zsh config.
+
+# replacing all ls bases aliases with lsd
+if check_com -c lsd; then
+  for k v in ${(kv)aliases}; do
+    if [[ "$v" = *"command ls "* ]]; then
+      unalias "$k"
+      alias "$k"="${v//command ls /command lsd }"
+    fi
+  done
+fi
+
+if check_com -c bat; then
+  alias cat="bat --paging=never"
+fi
+
+# ctrl + r history quality of life
+if check_com -c fzf; then
+  source <(fzf --zsh)
+fi
+
+# automagic nvm use . in directories with .nvmrc
+if [[ -r "/usr/share/nvm/init-nvm.sh" ]]; then
+  source "/usr/share/nvm/init-nvm.sh"
+fi
+

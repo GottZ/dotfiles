@@ -1,0 +1,16 @@
+[user]
+	email = git@gottz.de
+	name = Jan-Stefan Janetzky
+	signingKey = ~/.ssh/id_ed25519
+[gpg]
+	format = ssh
+[commit]
+	gpgsign = true
+[tag]
+	forceSignAnnotated = true
+	gpgsign = true
+[gpg "ssh"]
+	program = ssh-keygen
+	allowedSignersFile = ~/.ssh/allowed_signers
+[init]
+	defaultBranch = root
