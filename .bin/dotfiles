@@ -1,0 +1,7 @@
+#!/usr/bin/env zsh
+
+if [[ -r /opt/dotfiles ]]; then
+  cd /opt/dotfiles
+else
+  exit 1
+fi
