@@ -2,6 +2,10 @@
 	email = git@gottz.de
 	name = Jan-Stefan Janetzky
 	signingKey = ~/.ssh/id_ed25519
+[submodule]
+	recurse = true
+[url "git@github.com:"]
+	insteadOf = https://github.com/
 [gpg]
 	format = ssh
 [commit]
@@ -14,3 +18,5 @@
 	allowedSignersFile = ~/.ssh/allowed_signers
 [init]
 	defaultBranch = root
+[pull]
+	rebase = true
