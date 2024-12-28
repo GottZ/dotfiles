@@ -1,3 +1,4 @@
 font-family = ""
 font-family = "Pragmasevka Nerd Font"
-theme = "zenwritten_dark"
+theme = "dark:zenwritten_dark,light:zenwritten_light"
+gtk-titlebar = false
