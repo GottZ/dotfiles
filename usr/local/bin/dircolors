@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+if [[ -r "$HOME/.dircolors" ]]; then
+	/usr/bin/dircolors $@ "$HOME/.dircolors"
+	exit $?
+elif [[ -r "/etc/DIR_COLORS" ]]; then
+	/usr/bin/dircolors $@ "/etc/DIR_COLORS"
+	exit $?
+else
+	/usr/bin/dircolors $@
+	exit $?
+fi
+
+exit 1
