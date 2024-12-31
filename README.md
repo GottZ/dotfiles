@@ -5,7 +5,9 @@ This is just my humble dotfiles.
 
 ## how to use dis
 
-I tend to clone this into /opt/dotfiles as root and do manual `ln -s /opt/dotfiles/... .` symlinks at proper locations.
+I tend to clone this into `/opt/dotfiles` as root and do manual `ln -s /opt/dotfiles/... .` symlinks at proper locations.  
+In future, I'll simply use `.bin/dotfiles` for automagic glue management.  
+(How ever, I'll only implement that, if I really find it too tiresome to set this repo up.)
 
 ## contribution
 
