@@ -34,3 +34,17 @@ if [[ -r "/usr/share/nvm/init-nvm.sh" ]]; then
   source "/usr/share/nvm/init-nvm.sh"
 fi
 
+# check if we are running in termux
+#if [[ "$(which okc-ssh-agent)" == "/data/data/com.termux/files/usr/bin/okc-ssh-agent" ]]; then
+if [[ "${HOME}" == "/data/data/com.termux/files/home" ]]; then
+  FILEPREFIX="$HOME/.tmp/okc-ssh-agent"
+  SOCK="$FILEPREFIX.sock"
+  ENV="$FILEPREFIX.env"
+  if ! pgrep okc-ssh-agent > /dev/null; then
+    if [[ -r "$SOCK" ]]; then
+      rm "$SOCK"
+    fi
+    okc-ssh-agent -a "$SOCK" | sed -e '/^echo /d' > "$ENV"
+  fi
+  source "$ENV"
+fi
