@@ -1,0 +1,18 @@
+(defcfg
+  linux-dev /dev/input/by-id/usb-HAILUCK_CO._LTD_USB_KEYBOARD-event-kbd
+  process-unmapped-keys yes
+)
+
+(defsrc
+  caps esc rshift
+)
+
+(defalias
+  escctrl (tap-hold 200 200 esc rctrl)
+  capsalt (tap-hold 200 200 caps ralt)
+)
+
+(deflayer base
+  @escctrl @capsalt 102d
+)
+
