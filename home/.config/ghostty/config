@@ -2,3 +2,14 @@ font-family = ""
 font-family = "Pragmasevka Nerd Font"
 theme = "dark:zenwritten_dark,light:zenwritten_light"
 gtk-titlebar = false
+
+# who ever thought it was a good idea to put these bindings in, surely did not think about linux users, using tmux on remote ssh servers.
+keybind = alt+one=unbind
+keybind = alt+two=unbind
+keybind = alt+three=unbind
+keybind = alt+four=unbind
+keybind = alt+five=unbind
+keybind = alt+six=unbind
+keybind = alt+seven=unbind
+keybind = alt+eight=unbind
+keybind = alt+nine=unbind
