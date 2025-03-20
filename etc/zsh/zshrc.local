@@ -53,6 +53,19 @@ if check_com -c sudo; then
   alias root="sudo su -"
 fi
 
+if check_com -c docker; then
+  alias dcu="docker compose up -d"
+  alias dcd="docker compose down"
+  alias dcr="docker compose restart"
+  alias dcp="docker compose pause"
+  alias dcup="docker compose unpause"
+  alias dcdu="docker compose down; docker compose up -d"
+  alias dcl="docker compose logs -f -n200"
+  alias dcdul="docker compose down; docker compose up -d; docker compose logs -f -n200"
+  alias dcp="docker compose pull"
+  alias dce="docker compose exec"
+fi
+
 # check if we are running in termux
 #if [[ "$(which okc-ssh-agent)" == "/data/data/com.termux/files/usr/bin/okc-ssh-agent" ]]; then
 if [[ "${HOME}" == "/data/data/com.termux/files/home" ]]; then
