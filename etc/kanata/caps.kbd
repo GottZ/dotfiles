@@ -1,0 +1,45 @@
+(defcfg
+  linux-dev-names-include (
+    "Fujitsu Fujitsu Keyboard"
+    "AT Translated Set 2 keyboard"
+  )
+  process-unmapped-keys yes
+)
+
+(defalias micmute (arbitrary-code 248))
+(defalias holdfn (layer-while-held fn))
+
+(defsrc
+  ⇪ ⎋ ⭾ ‹⇧
+  f1 f2 f3 f4
+  q w e r
+  a s d f
+  z x c v
+)
+
+(deflayermap base
+  ⇪ (tap-hold 200 200 ⎋ @holdfn)
+  ⎋ (tap-hold 200 200 ⎋ @holdfn)
+)
+
+(deflayermap fn
+  ‹⇧ ⇪
+  ⭾ @micmute
+  f1 🔇
+  f2 🔉
+  f3 🔊
+  f4 @micmute
+  q 🖰2
+  w 🖰3
+  e 🖰1
+  r mwu
+  f mwd
+  c mwl
+  v mwr
+  z bck
+  x fwd
+  a ◀◀
+  s ▶⏸
+  d ▶▶
+)
+

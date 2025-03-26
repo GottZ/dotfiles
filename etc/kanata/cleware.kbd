@@ -1,0 +1,16 @@
+(defcfg
+  linux-dev-names-include (
+    "Cleware GmbH USB-Keys01"
+  )
+  process-unmapped-keys yes
+)
+
+(defalias micmute (arbitrary-code 248))
+
+(defsrc
+  F9 F4
+)
+
+(deflayer start
+  @micmute @micmute
+)
