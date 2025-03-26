@@ -54,6 +54,23 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
 
   config.launch_menu = launch_menu
   config.default_prog = launch_menu[1].args
+
+else
+  -- set selected cursor theme on linux
+  local success, stdout, stderr = wezterm.run_child_process{
+    "gsettings", "get", "org.gnome.desktop.interface", "cursor-theme"
+  }
+  if success then
+    config.xcursor_theme = stdout:gsub("'(.+)'\n", "%1")
+  end
+
+  -- set selected cursor size on linux
+  local success, stdout, stderr = wezterm.run_child_process{
+    "gsettings", "get", "org.gnome.desktop.interface", "cursor-size"
+  }
+  if success then
+    config.xcursor_size = tonumber(stdout)
+  end
 end
 
 return config
