@@ -3,8 +3,10 @@ local act = wezterm.action
 
 local config = wezterm.config_builder()
 
+-- config.window_background_opacity = 0.96
+
 config.font = wezterm.font('Pragmasevka Nerd Font')
---config.color_scheme = 'zenwritten_dark'
+-- config.color_scheme = 'zenwritten_dark'
 config.ssh_backend = "Ssh2"
 
 config.force_reverse_video_cursor = true
@@ -39,6 +41,33 @@ config.colors = {
     "#C5C9C5",
   },
 }
+
+config.use_fancy_tab_bar = false
+
+config.colors.tab_bar = {
+  inactive_tab_edge = config.colors.split,
+  background = config.colors.background,
+  active_tab = {
+    fg_color = config.colors.foreground,
+    bg_color = config.colors.background,
+    -- underline = "Single",
+    underline = "None",
+    italic = false,
+    intensity = "Bold",
+  },
+  inactive_tab = {
+    fg_color = config.colors.cursor_fg,
+    bg_color = config.colors.background,
+    underline = "None",
+    italic = true,
+    intensity = "Normal",
+  },
+}
+config.colors.tab_bar.new_tab = config.colors.tab_bar.inactive_tab
+
+-- config.colors.compose_cursor = "orange"
+
+
 
 config.keys = {
   --{ key = "Insert", mods = "SHIFT", action = act.PasteFrom("PrimarySelection") }
