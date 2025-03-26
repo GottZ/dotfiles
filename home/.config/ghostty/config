@@ -1,6 +1,6 @@
 font-family = ""
 font-family = "Pragmasevka Nerd Font"
-theme = "dark:zenwritten_dark,light:zenwritten_light"
+# theme = "dark:zenwritten_dark,light:zenwritten_light"
 # gtk-titlebar = false
 
 # who ever thought it was a good idea to put these bindings in, surely did not think about linux users, using tmux on remote ssh servers.
@@ -13,3 +13,26 @@ keybind = alt+six=unbind
 keybind = alt+seven=unbind
 keybind = alt+eight=unbind
 keybind = alt+nine=unbind
+
+palette = 0=#0d0c0c
+palette = 1=#c4746e
+palette = 2=#8a9a7b
+palette = 3=#c4b28a
+palette = 4=#8ba4b0
+palette = 5=#a292a3
+palette = 6=#8ea4a2
+palette = 7=#c8c093
+palette = 8=#a6a69c
+palette = 9=#e46876
+palette = 10=#87a987
+palette = 11=#e6c384
+palette = 12=#7fb4ca
+palette = 13=#938aa9
+palette = 14=#7aa89f
+palette = 15=#c5c9c5
+
+background = 181616
+foreground = c5c9c5
+cursor-color = c8c093
+selection-background = 2d4f67
+selection-foreground = c8c093
