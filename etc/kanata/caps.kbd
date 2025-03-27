@@ -1,5 +1,6 @@
 (defcfg
   linux-dev-names-include (
+    "Wooting WootingTwo"
     "Fujitsu Fujitsu Keyboard"
     "AT Translated Set 2 keyboard"
   )
