@@ -51,6 +51,8 @@ fi
 if check_com -c tmux; then
   if check_com -c hostnamectl; then
     HOSTNAME="$(hostnamectl hostname)"
+  elif check_com -c hostname; then
+    HOSTNAME="$(hostname)"
   else
     HOSTNAME="$(cat /etc/hostname)"
   fi
@@ -90,4 +92,6 @@ if [[ "${HOME}" == "/data/data/com.termux/files/home" ]]; then
     okc-ssh-agent -a "$SOCK" | sed -e '/^echo /d' > "$ENV"
   fi
   source "$ENV"
+
+  export PATH=$PATH:$HOME/go/bin
 fi
