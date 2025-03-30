@@ -67,15 +67,15 @@ if check_com -c sudo; then
 fi
 
 if check_com -c docker; then
+  alias dc="docker compose"
   alias dcu="docker compose up -d"
   alias dcd="docker compose down"
   alias dcr="docker compose restart"
-  alias dcp="docker compose pause"
-  alias dcup="docker compose unpause"
   alias dcdu="docker compose down; docker compose up -d"
   alias dcl="docker compose logs -f -n200"
-  alias dcdul="docker compose down; docker compose up -d; docker compose logs -f -n200"
+  alias dcdul="docker compose down; docker compose up -d && docker compose logs -f -n200"
   alias dcp="docker compose pull"
+  alias dcpu="docker compose pull && docker compose up -d"
   alias dce="docker compose exec"
 fi
 
