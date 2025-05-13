@@ -76,6 +76,7 @@ if check_com -c docker; then
   alias dcdul="docker compose down; docker compose up -d && docker compose logs -f -n200"
   alias dcp="docker compose pull"
   alias dcpu="docker compose pull && docker compose up -d"
+  alias dcpul="docker compose pull && docker compose up -d && docker compose logs -f -n200"
   alias dce="docker compose exec"
 fi
 

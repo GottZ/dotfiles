@@ -4,8 +4,8 @@
 	signingKey = ~/.ssh/id_ed25519
 [submodule]
 	recurse = true
-[url "git@github.com:"]
-	insteadOf = https://github.com/
+#[url "git@github.com:"]
+#	insteadOf = https://github.com/
 [gpg]
 	format = ssh
 [commit]
