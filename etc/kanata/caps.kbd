@@ -3,6 +3,7 @@
     "Wooting WootingTwo"
     "Fujitsu Fujitsu Keyboard"
     "AT Translated Set 2 keyboard"
+    "Cherry GmbH CHERRY Wireless Device"
   )
   process-unmapped-keys yes
 )
@@ -16,6 +17,7 @@
   q w e r
   a s d f
   z x c v
+  lalt Space ralt
 )
 
 (deflayermap base
@@ -42,5 +44,8 @@
   a ◀◀
   s ▶⏸
   d ▶▶
+  lalt f15
+  Space f14
+  ralt f13
 )
 
