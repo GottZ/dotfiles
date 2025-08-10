@@ -74,23 +74,98 @@ config.keys = {
   { key = "Insert", mods = "SHIFT", action = act.PasteFrom("Clipboard") }
 }
 
+-- in part thanks to https://github.com/wezterm/wezterm/issues/5963#issuecomment-2533250740
 if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
   local launch_menu = {}
 
-  table.insert(launch_menu, {
-    label = 'PowerShell 7',
-    args = { 'pwsh.exe', '-NoLogo' },
-  })
+  local function is_executable_in_path(executable)
+    return wezterm.run_child_process { 'where.exe', '/Q', executable }
+  end
+  
+  local set_default_prog = function()
+    if config.default_prog then
+      return
+    end
 
-  table.insert(launch_menu, {
-    label = 'PowerShell 6',
-    args = { 'powershell.exe', '-NoLogo' },
-  })
+    if #launch_menu > 0 then
+      config.default_prog = launch_menu[1].args
+    end
+  end
+
+  local pwsh = is_executable_in_path 'pwsh.exe'
+  local powershell = is_executable_in_path 'powershell.exe'
+  local git = is_executable_in_path 'git.exe'
+  local elvish = is_executable_in_path 'elvish.exe'
+  local nu = is_executable_in_path 'nu.exe'
+
+  -- Use powershell to query the registry for the Git for Windows install path
+  local bash_path = ''
+  if git and ( pwsh or powershell ) then
+    local shell = pwsh and 'pwsh.exe' or 'powershell.exe'
+    local git_registry, git_path, stderr = wezterm.run_child_process {
+      shell,
+      '-Command',
+      [[(Get-ItemProperty -Path Registry::HKEY_LOCAL_MACHINE\SOFTWARE\GitForWindows).InstallPath]],
+    }
+    if git_registry then
+      for _, line in ipairs(wezterm.split_by_newlines(git_path)) do
+        bash_path = bash_path .. line
+      end
+      bash_path = bash_path .. [[\bin\bash.exe]]
+    end
+  end
+  
+  if pwsh then
+    table.insert(launch_menu, {
+      label = 'PowerShell 7',
+      args = { 'pwsh.exe', '-NoLogo' },
+    })
+    set_default_prog()
+  end
+
+  if powershell then
+    table.insert(launch_menu, {
+      label = 'PowerShell 6',
+      args = { 'powershell.exe', '-NoLogo' },
+    })
+    set_default_prog()
+  end
 
   table.insert(launch_menu, {
     label = 'cmd',
-    args = { 'cmd.exe', '-NoLogo' },
+    args = { os.getenv 'COMSPEC', '/k' },
   })
+  set_default_prog()
+
+  if git and bash_path ~= '' then
+    table.insert(launch_menu, {
+      label = 'Git Bash',
+      args = { bash_path, '-i', '-l' },
+    })
+  end
+
+  if elvish then
+    table.insert(launch_menu, {
+      label = 'Elvish',
+      args = { 'elvish.exe' },
+    })
+  end
+
+  if nu then
+    table.insert(launch_menu, {
+      label = 'NuShell',
+      args = { 'nu.exe' },
+    })
+  end
+
+  -- Add WSL to the launch menu if it is available
+  --local wsl_available = wezterm.run_child_process { 'wsl.exe', '--list', '--quiet' }
+  --if wsl_available then
+  --  table.insert(launch_menu, {
+  --    label = 'WSL',
+  --    args = { 'wsl.exe', '-d', 'Ubuntu-20.04' }, -- Change to your preferred distro
+  --  })
+  --end
 
   -- Find installed visual studio version(s) and add their compilation
   -- environment command prompts to the menu
@@ -113,7 +188,6 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
   end
 
   config.launch_menu = launch_menu
-  config.default_prog = launch_menu[1].args
 
 else
   -- set selected cursor theme on linux
