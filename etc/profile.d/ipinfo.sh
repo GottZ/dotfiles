@@ -1,5 +1,5 @@
 ipinfo() {
-  if [[ -f "~/.secrets/ipinfo" ]]; then
+  if [[ ! -f ~/.secrets/ipinfo ]]; then
     echo "you need to add your access token to ~/.secrets/ipinfo"
     return
   fi
