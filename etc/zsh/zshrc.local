@@ -78,6 +78,10 @@ if check_com -c docker; then
   alias dcpu="docker compose pull && docker compose up -d"
   alias dcpul="docker compose pull && docker compose up -d && docker compose logs -f -n200"
   alias dce="docker compose exec"
+  alias dcb="docker compose build --pull"
+  alias dcbn="docker compose build --pull --no-cache"
+  alias dcbu="docker compose build --pull && docker compose up -d"
+  alias dcbnu="docker compose build --pull --no-cache && docker compose up -d"
   alias dcpua="docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I% docker pull '%'; docker ps --format='{{.ID}}' | xargs -I% docker inspect --format='{{index .Config.Labels \"com.docker.compose.project.working_dir\"}}' '%' | sort -u | awk NF | xargs -I% bash -c \"pushd '%'; docker compose up -d; popd\""
 fi
 
