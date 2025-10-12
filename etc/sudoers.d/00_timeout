@@ -1,1 +1,1 @@
-defaults passwd_timeout = 0
+Defaults passwd_timeout=0
