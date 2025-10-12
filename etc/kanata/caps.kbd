@@ -22,7 +22,6 @@
 
 (deflayermap base
   ⇪ (tap-hold 200 200 ⎋ @holdfn)
-  ⎋ (tap-hold 200 200 ⎋ @holdfn)
 )
 
 (deflayermap fn
