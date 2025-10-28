@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+container=$1
+shift
+
+# extract environment variables from container
+POSTGRES_PASSWORD=$(docker inspect --format '{{ $c := . }}{{range $c.Config.Env}}{{if eq (index (split . "=") 0) "POSTGRES_PASSWORD"}}{{(index (split . "=") 1)}}{{end}}{{end}}' "$container")
+POSTGRES_DB=$(docker inspect --format '{{ $c := . }}{{range $c.Config.Env}}{{if eq (index (split . "=") 0) "POSTGRES_DB"}}{{(index (split . "=") 1)}}{{end}}{{end}}' "$container")
+POSTGRES_USER=$(docker inspect --format '{{ $c := . }}{{range $c.Config.Env}}{{if eq (index (split . "=") 0) "POSTGRES_USER"}}{{(index (split . "=") 1)}}{{end}}{{end}}' "$container")
+
+NETWORK_IP=$(docker inspect --format '{{ $c := . }}{{range $k, $v := $c.NetworkSettings.Networks}}{{$v.IPAddress}}{{end}}' "$container")
+
+# check if variables are set
+if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$POSTGRES_DB" ] || [ -z "$POSTGRES_USER" ] || [ -z "$NETWORK_IP" ]; then
+  echo "Error: Could not extract necessary environment variables from container."
+  exit 1
+fi
+
+pg_uri="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${NETWORK_IP}:5432/${POSTGRES_DB}"
+
+psql "$pg_uri" "$@"
+
+exit 0
+
+#psql $(docker inspect --format '{{ $c := . }}{{range $c.Config.Env}}{{if eq (index (split . "=") 0) "POSTGRES_PASSWORD"}}postgresql://pguser:{{(index (split . "=") 1)}}@{{range $k, $v := $c.NetworkSettings.Networks}}{{$v.IPAddress}}{{end}}:5432/gottz.de{{end}}{{end}}' "$container")
