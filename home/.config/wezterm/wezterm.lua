@@ -73,9 +73,17 @@ config.colors.tab_bar.new_tab = config.colors.tab_bar.inactive_tab
 
 
 if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
-  pcall(function()
-    config.default_ssh_auth_sock = "\\\\.\\pipe\\openssh-ssh-agent"
-  end)
+  -- config.ssh_backend = "LibSsh"
+  local ok, stdout, _ = wezterm.run_child_process { 'sc.exe', 'query', 'ssh-agent' }
+  if ok and stdout:find('RUNNING') then
+    local pipe = "\\\\.\\pipe\\openssh-ssh-agent"
+    pcall(function()
+      config.default_ssh_auth_sock = pipe
+    end)
+    config.set_environment_variables = {
+      SSH_AUTH_SOCK = pipe,
+    }
+  end
 end
 
 config.ssh_domains = {}
