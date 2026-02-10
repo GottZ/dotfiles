@@ -82,7 +82,16 @@ if check_com -c docker; then
   alias dcbn="docker compose build --pull --no-cache"
   alias dcbu="docker compose build --pull && docker compose up -d"
   alias dcbnu="docker compose build --pull --no-cache && docker compose up -d"
-  alias dcpua="docker images --format '{{.Repository}}:{{.Tag}}' | xargs -I% docker pull '%'; docker ps --format='{{.ID}}' | xargs -I% docker inspect --format='{{index .Config.Labels \"com.docker.compose.project.working_dir\"}}' '%' | sort -u | awk NF | xargs -I% bash -c \"pushd '%'; docker compose up -d; popd\""
+  function dcpua() {
+    docker images --format '{{.Repository}}:{{.Tag}}' | while read -r img; do
+      [[ "$img" == *"<none>"* ]] && continue
+      [[ "$(docker image inspect --format '{{json .RepoDigests}}' "$img" 2>/dev/null)" == "[]" ]] && continue
+      docker pull "$img"
+    done
+    docker ps --format='{{.ID}}' | xargs -I% docker inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' '%' | sort -u | awk NF | while read -r dir; do
+      pushd "$dir" && docker compose up -d && popd
+    done
+  }
 fi
 
 if check_com -c gh; then
