@@ -20,3 +20,11 @@
 	defaultBranch = root
 [pull]
 	rebase = true
+[fetch]
+	prune = true
+[merge]
+	conflictstyle = zdiff3
+[rebase]
+	autoStash = true
+[diff]
+	algorithm = histogram
