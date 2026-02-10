@@ -83,13 +83,43 @@ if check_com -c docker; then
   alias dcbu="docker compose build --pull && docker compose up -d"
   alias dcbnu="docker compose build --pull --no-cache && docker compose up -d"
   function dcpua() {
-    docker images --format '{{.Repository}}:{{.Tag}}' | while read -r img; do
+    local images=() skipped=0 pulled=0 failed=0
+    while read -r img; do
       [[ "$img" == *"<none>"* ]] && continue
-      [[ "$(docker image inspect --format '{{json .RepoDigests}}' "$img" 2>/dev/null)" == "[]" ]] && continue
-      docker pull "$img"
+      if [[ "$(docker image inspect --format '{{json .RepoDigests}}' "$img" 2>/dev/null)" == "[]" ]]; then
+        skipped=$((skipped + 1))
+        continue
+      fi
+      images+=("$img")
+    done < <(docker images --format '{{.Repository}}:{{.Tag}}')
+
+    echo "\033[1m:: pulling ${#images[@]} images (${skipped} local skipped)\033[0m"
+    local i=0
+    for img in "${images[@]}"; do
+      i=$((i + 1))
+      echo "\033[36m[${i}/${#images[@]}]\033[0m ${img}"
+      if docker pull "$img" -q >/dev/null 2>&1; then
+        pulled=$((pulled + 1))
+      else
+        failed=$((failed + 1))
+        echo "\033[31m  failed: ${img}\033[0m"
+      fi
     done
-    docker ps --format='{{.ID}}' | xargs -I% docker inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}' '%' | sort -u | awk NF | while read -r dir; do
-      pushd "$dir" && docker compose up -d && popd
+
+    echo "\033[1m:: pulled ${pulled}, failed ${failed}, skipped ${skipped}\033[0m"
+
+    local -A project_services project_dirs
+    while IFS=$'\t' read -r dir service; do
+      [[ -z "$dir" || -z "$service" ]] && continue
+      project_dirs[$dir]=1
+      project_services[$dir]+="${service} "
+    done < <(docker ps -q | xargs -r docker inspect --format='{{index .Config.Labels "com.docker.compose.project.working_dir"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.service"}}')
+
+    echo "\033[1m:: recreating running services in ${#project_dirs[@]} compose projects\033[0m"
+    for dir in "${(@k)project_dirs}"; do
+      local services=(${=project_services[$dir]})
+      echo "\033[36m::\033[0m ${dir} (${services[*]})"
+      docker compose --project-directory "$dir" up -d "${services[@]}"
     done
   }
 fi
