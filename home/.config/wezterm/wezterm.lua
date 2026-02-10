@@ -72,6 +72,31 @@ config.colors.tab_bar.new_tab = config.colors.tab_bar.inactive_tab
 
 
 
+if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
+  pcall(function()
+    config.default_ssh_auth_sock = "\\\\.\\pipe\\openssh-ssh-agent"
+  end)
+end
+
+config.ssh_domains = {}
+for host, ssh_config in pairs(wezterm.enumerate_ssh_hosts()) do
+  if host ~= '*' then
+    local address = (ssh_config.hostname or host) .. (ssh_config.port and (":" .. ssh_config.port) or "")
+    local user = ssh_config.user or "root"
+    table.insert(config.ssh_domains, {
+      name = host,
+      remote_address = address,
+      username = user,
+      multiplexing = "None",
+    })
+    table.insert(config.ssh_domains, {
+      name = "mux-" .. host,
+      remote_address = address,
+      username = user,
+    })
+  end
+end
+
 config.keys = {
   --{ key = "Insert", mods = "SHIFT", action = act.PasteFrom("PrimarySelection") }
   { key = "Insert", mods = "SHIFT", action = act.PasteFrom("Clipboard") }
