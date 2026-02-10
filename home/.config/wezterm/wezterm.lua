@@ -3,13 +3,16 @@ local act = wezterm.action
 
 local config = wezterm.config_builder()
 
+config.enable_kitty_keyboard = true
+config.enable_csi_u_key_encoding = false
+
 -- config.window_background_opacity = 0.96
 
 config.font = wezterm.font('Pragmasevka Nerd Font')
 -- config.color_scheme = 'zenwritten_dark'
 config.ssh_backend = "Ssh2"
 
-config.force_reverse_video_cursor = true
+-- config.force_reverse_video_cursor = true
 config.colors = {
   foreground = "#c5c9c5",
   background = "#181616",
@@ -81,7 +84,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
   local function is_executable_in_path(executable)
     return wezterm.run_child_process { 'where.exe', '/Q', executable }
   end
-  
+
   local set_default_prog = function()
     if config.default_prog then
       return
@@ -102,7 +105,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
   local bash_path = ''
   if git and ( pwsh or powershell ) then
     local shell = pwsh and 'pwsh.exe' or 'powershell.exe'
-    local git_registry, git_path, stderr = wezterm.run_child_process {
+    local git_registry, git_path, _ = wezterm.run_child_process {
       shell,
       '-Command',
       [[(Get-ItemProperty -Path Registry::HKEY_LOCAL_MACHINE\SOFTWARE\GitForWindows).InstallPath]],
@@ -114,7 +117,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
       bash_path = bash_path .. [[\bin\bash.exe]]
     end
   end
-  
+
   if pwsh then
     table.insert(launch_menu, {
       label = 'PowerShell 7',
@@ -191,7 +194,7 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
 
 else
   -- set selected cursor theme on linux
-  local success, stdout, stderr = wezterm.run_child_process{
+  local success, stdout, _ = wezterm.run_child_process{
     "gsettings", "get", "org.gnome.desktop.interface", "cursor-theme"
   }
   if success then
@@ -199,7 +202,7 @@ else
   end
 
   -- set selected cursor size on linux
-  local success, stdout, stderr = wezterm.run_child_process{
+  success, stdout, _ = wezterm.run_child_process{
     "gsettings", "get", "org.gnome.desktop.interface", "cursor-size"
   }
   if success then
