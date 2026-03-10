@@ -122,6 +122,10 @@ if check_com -c docker; then
       docker compose --project-directory "$dir" up -d "${services[@]}"
     done
   }
+
+  if ! check_com -c dive; then
+    alias dive="docker run -ti --rm  -v /var/run/docker.sock:/var/run/docker.sock docker.io/wagoodman/dive"
+  fi
 fi
 
 if check_com -c gh; then
