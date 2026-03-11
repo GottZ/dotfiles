@@ -11,6 +11,7 @@ if [[ -r "/opt/dotfiles/.bin" ]]; then
 fi
 
 if [[ -r "$HOME/.bun/bin" ]]; then
+    [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 	export BUN_INSTALL="$HOME/.bun"
 	append_path "$HOME/.bun/bin"
 fi
