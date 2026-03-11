@@ -10,6 +10,10 @@ if [[ -r "/opt/dotfiles/.bin" ]]; then
 	append_path "/opt/dotfiles/.bin"
 fi
 
+if [[ -r "$HOME/.bun/bin" ]]; then
+	append_path "$HOME/.bun/bin"
+fi
+
 if [[ -r "$HOME/.cargo/env" ]]; then
 	. "$HOME/.cargo/env"
 fi
