@@ -126,6 +126,10 @@ if check_com -c docker; then
   if ! check_com -c dive; then
     alias dive="docker run -ti --rm  -v /var/run/docker.sock:/var/run/docker.sock docker.io/wagoodman/dive"
   fi
+
+  if ! check_com -c browsh; then
+    alias browsh="docker run --rm -it --net=host browsh/browsh"
+  fi
 fi
 
 if check_com -c gh; then
