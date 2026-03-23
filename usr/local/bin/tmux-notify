@@ -16,12 +16,14 @@
 #           --window #{q:window_name} \
 #           --pane #{q:pane_index} \
 #           --path #{q:pane_current_path} \
-#           --command #{q:pane_current_command} ; \
+#           --command #{q:pane_current_command} \
+#           --active #{window_active} \
+#           --clients #{session_attached} ; \
 #       fi \
 #     "'
 #   }
 
-set -euo pipefail
+set -uo pipefail
 
 # --- Defaults ---
 WEBHOOK_URL=""
@@ -31,6 +33,8 @@ WINDOW=""
 PANE=""
 PATH_DIR=""
 COMMAND=""
+ACTIVE=""
+CLIENTS=""
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-notify"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-notify/config"
@@ -56,6 +60,8 @@ while [[ $# -gt 0 ]]; do
     --pane)         PANE="$2";              shift 2 ;;
     --path)         PATH_DIR="$2";          shift 2 ;;
     --command)      COMMAND="$2";           shift 2 ;;
+    --active)       ACTIVE="$2";            shift 2 ;;
+    --clients)      CLIENTS="$2";           shift 2 ;;
     --help|-h)
       echo "Usage: tmux-notify --session <s> --window <w> --pane <p> --path <dir> --command <cmd>"
       echo ""
@@ -67,6 +73,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --pane <index>        tmux pane index"
       echo "  --path <dir>          Working directory of the pane"
       echo "  --command <cmd>       Current command running in the pane"
+      echo "  --active <0|1>        Whether the bell window is currently active"
+      echo "  --clients <n>         Number of clients attached to the session"
       echo ""
       echo "Config file: \$XDG_CONFIG_HOME/tmux-notify/config"
       exit 0
@@ -107,11 +115,13 @@ date +%s > "$debounce_file"
 find "$CACHE_DIR" -maxdepth 1 -type f -mmin +60 -delete 2>/dev/null &
 
 # --- Send webhook ---
-exec curl -sf --max-time 10 -G \
+curl -sf --max-time 10 -G \
   --data-urlencode "session=$SESSION" \
   --data-urlencode "window=$WINDOW" \
   --data-urlencode "pane=$PANE" \
   --data-urlencode "path=$PATH_DIR" \
   --data-urlencode "command=$COMMAND" \
-  "$WEBHOOK_URL" >/dev/null 2>&1
+  --data-urlencode "active=$ACTIVE" \
+  --data-urlencode "clients=$CLIENTS" \
+  "$WEBHOOK_URL" >/dev/null 2>&1 || true
 
