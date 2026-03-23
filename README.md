@@ -194,10 +194,14 @@ if-shell 'command -v tmux-notify' {
 
 ### Example: n8n webhook workflow
 
-A minimal n8n workflow that receives the bell event, suppresses notifications when the user is already looking at the window (`active != 1`), and sends an SMS:
+A minimal n8n workflow that receives the bell event and sends an SMS — unless the user is connected and looking at the active window:
 
 ```
-Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (send SMS)
+Webhook (POST) → inactive window?
+  ├─ yes → sms prep → send sms
+  └─ no  → nobody connected?
+             ├─ yes → sms prep → send sms
+             └─ no  → [stop, user is watching]
 ```
 
 <details>
@@ -249,7 +253,38 @@ Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (
       "typeVersion": 2.3,
       "position": [208, 0],
       "id": "00000000-0000-0000-0000-000000000003",
-      "name": "If"
+      "name": "inactive window"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "00000000-0000-0000-0000-000000000004",
+              "leftValue": "={{ $json.body.clients }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [416, 80],
+      "id": "00000000-0000-0000-0000-000000000005",
+      "name": "nobody connected"
     },
     {
       "parameters": {
@@ -257,8 +292,8 @@ Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [416, 0],
-      "id": "00000000-0000-0000-0000-000000000004",
+      "position": [624, 0],
+      "id": "00000000-0000-0000-0000-000000000006",
       "name": "sms prep"
     },
     {
@@ -287,16 +322,22 @@ Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [624, 0],
-      "id": "00000000-0000-0000-0000-000000000005",
+      "position": [832, 0],
+      "id": "00000000-0000-0000-0000-000000000007",
       "name": "send sms"
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{"node": "If", "type": "main", "index": 0}]]
+      "main": [[{"node": "inactive window", "type": "main", "index": 0}]]
     },
-    "If": {
+    "inactive window": {
+      "main": [
+        [{"node": "sms prep", "type": "main", "index": 0}],
+        [{"node": "nobody connected", "type": "main", "index": 0}]
+      ]
+    },
+    "nobody connected": {
       "main": [[{"node": "sms prep", "type": "main", "index": 0}]]
     },
     "sms prep": {
@@ -312,7 +353,7 @@ Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (
 
 </details>
 
-The Code node formats the SMS message as `session:pane/window pings in …/path` (truncated to 30 chars). The If node filters out bells from the currently active window — no notification if you're already looking at it.
+The Code node formats the SMS message as `session:pane/window pings in …/path` (truncated to 30 chars). Notifications are suppressed only when a client is connected **and** the bell window is active — otherwise the SMS is sent.
 
 ---
 
