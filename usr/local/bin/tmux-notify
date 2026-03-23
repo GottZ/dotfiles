@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# tmux-notify — Forward tmux bell events to a webhook
+#
+# Configuration (in order of precedence):
+#   1. Command-line flags (--webhook-url, --debounce)
+#   2. Environment variables (TMUX_NOTIFY_WEBHOOK_URL, TMUX_NOTIFY_DEBOUNCE)
+#   3. Config file (~/.config/tmux-notify/config)
+#
+# Usage in tmux.conf:
+#   if-shell 'command -v tmux-notify' {
+#     set-option -g monitor-bell on
+#     set-hook -g alert-bell 'run-shell -b "\
+#       if [ \"#{pane_current_command}\" = \"claude\" ] && command -v tmux-notify >/dev/null 2>&1; then \
+#         tmux-notify \
+#           --session #{q:session_name} \
+#           --window #{q:window_name} \
+#           --pane #{q:pane_index} \
+#           --path #{q:pane_current_path} \
+#           --command #{q:pane_current_command} ; \
+#       fi \
+#     "'
+#   }
+
+set -euo pipefail
+
+# --- Defaults ---
+WEBHOOK_URL=""
+DEBOUNCE_SECONDS=5
+SESSION=""
+WINDOW=""
+PANE=""
+PATH_DIR=""
+COMMAND=""
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-notify"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-notify/config"
+
+# --- Config file ---
+if [[ -f "$CONFIG_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+  # Config uses same variable names: WEBHOOK_URL, DEBOUNCE_SECONDS
+fi
+
+# --- Environment overrides ---
+WEBHOOK_URL="${TMUX_NOTIFY_WEBHOOK_URL:-$WEBHOOK_URL}"
+DEBOUNCE_SECONDS="${TMUX_NOTIFY_DEBOUNCE:-$DEBOUNCE_SECONDS}"
+
+# --- Parse arguments ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --webhook-url)  WEBHOOK_URL="$2";      shift 2 ;;
+    --debounce)     DEBOUNCE_SECONDS="$2";  shift 2 ;;
+    --session)      SESSION="$2";           shift 2 ;;
+    --window)       WINDOW="$2";            shift 2 ;;
+    --pane)         PANE="$2";              shift 2 ;;
+    --path)         PATH_DIR="$2";          shift 2 ;;
+    --command)      COMMAND="$2";           shift 2 ;;
+    --help|-h)
+      echo "Usage: tmux-notify --session <s> --window <w> --pane <p> --path <dir> --command <cmd>"
+      echo ""
+      echo "Options:"
+      echo "  --webhook-url <url>   Webhook endpoint (or set TMUX_NOTIFY_WEBHOOK_URL)"
+      echo "  --debounce <seconds>  Suppress duplicate bells within N seconds (default: 5)"
+      echo "  --session <name>      tmux session name"
+      echo "  --window <name>       tmux window name"
+      echo "  --pane <index>        tmux pane index"
+      echo "  --path <dir>          Working directory of the pane"
+      echo "  --command <cmd>       Current command running in the pane"
+      echo ""
+      echo "Config file: \$XDG_CONFIG_HOME/tmux-notify/config"
+      exit 0
+      ;;
+    *)
+      echo "tmux-notify: unknown option '$1'" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# --- Validate ---
+if [[ -z "$WEBHOOK_URL" ]]; then
+  echo "tmux-notify: no webhook URL configured" >&2
+  echo "  Set TMUX_NOTIFY_WEBHOOK_URL, --webhook-url, or add WEBHOOK_URL to $CONFIG_FILE" >&2
+  exit 1
+fi
+
+# --- Debounce ---
+# Hash all parameters to detect identical events
+debounce_key=$(printf '%s\0%s\0%s\0%s\0%s' "$SESSION" "$WINDOW" "$PANE" "$PATH_DIR" "$COMMAND" | md5sum | cut -d' ' -f1)
+debounce_file="$CACHE_DIR/$debounce_key"
+
+mkdir -p "$CACHE_DIR"
+
+if [[ -f "$debounce_file" ]]; then
+  last_ts=$(cat "$debounce_file")
+  now=$(date +%s)
+  elapsed=$(( now - last_ts ))
+  if (( elapsed < DEBOUNCE_SECONDS )); then
+    exit 0
+  fi
+fi
+
+date +%s > "$debounce_file"
+
+# --- Cleanup stale debounce files (older than 1 hour, non-blocking) ---
+find "$CACHE_DIR" -maxdepth 1 -type f -mmin +60 -delete 2>/dev/null &
+
+# --- Send webhook ---
+exec curl -sf --max-time 10 -G \
+  --data-urlencode "session=$SESSION" \
+  --data-urlencode "window=$WINDOW" \
+  --data-urlencode "pane=$PANE" \
+  --data-urlencode "path=$PATH_DIR" \
+  --data-urlencode "command=$COMMAND" \
+  "$WEBHOOK_URL" >/dev/null 2>&1
+

@@ -1,0 +1,11 @@
+# tmux-notify configuration
+# Location: ~/.config/tmux-notify/config
+#
+# This file is sourced as bash — only variable assignments, no commands.
+
+# Webhook endpoint (required)
+WEBHOOK_URL="https://example.com/webhook/claude-bell"
+
+# Suppress duplicate bells with identical parameters within N seconds
+DEBOUNCE_SECONDS=5
+
