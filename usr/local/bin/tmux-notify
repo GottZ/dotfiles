@@ -18,7 +18,16 @@
 #           --path #{q:pane_current_path} \
 #           --command #{q:pane_current_command} \
 #           --active #{window_active} \
-#           --clients #{session_attached} ; \
+#           --clients #{session_attached} \
+#           --host #{host} \
+#           --window-index #{window_index} \
+#           --pane-pid #{pane_pid} \
+#           --pane-title #{q:pane_title} \
+#           --window-panes #{window_panes} \
+#           --window-activity #{window_activity} \
+#           --pane-dead #{pane_dead} \
+#           --session-id #{session_id} \
+#           --session-windows #{session_windows} ; \
 #       fi \
 #     "'
 #   }
@@ -35,6 +44,15 @@ PATH_DIR=""
 COMMAND=""
 ACTIVE=""
 CLIENTS=""
+HOST=""
+WINDOW_INDEX=""
+PANE_PID=""
+PANE_TITLE=""
+WINDOW_PANES=""
+WINDOW_ACTIVITY=""
+PANE_DEAD=""
+SESSION_ID=""
+SESSION_WINDOWS=""
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-notify"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-notify/config"
@@ -62,6 +80,15 @@ while [[ $# -gt 0 ]]; do
     --command)      COMMAND="$2";           shift 2 ;;
     --active)       ACTIVE="$2";            shift 2 ;;
     --clients)      CLIENTS="$2";           shift 2 ;;
+    --host)         HOST="$2";              shift 2 ;;
+    --window-index) WINDOW_INDEX="$2";      shift 2 ;;
+    --pane-pid)     PANE_PID="$2";          shift 2 ;;
+    --pane-title)   PANE_TITLE="$2";        shift 2 ;;
+    --window-panes) WINDOW_PANES="$2";      shift 2 ;;
+    --window-activity) WINDOW_ACTIVITY="$2"; shift 2 ;;
+    --pane-dead)    PANE_DEAD="$2";         shift 2 ;;
+    --session-id)   SESSION_ID="$2";        shift 2 ;;
+    --session-windows) SESSION_WINDOWS="$2"; shift 2 ;;
     --help|-h)
       echo "Usage: tmux-notify --session <s> --window <w> --pane <p> --path <dir> --command <cmd>"
       echo ""
@@ -75,6 +102,15 @@ while [[ $# -gt 0 ]]; do
       echo "  --command <cmd>       Current command running in the pane"
       echo "  --active <0|1>        Whether the bell window is currently active"
       echo "  --clients <n>         Number of clients attached to the session"
+      echo "  --host <name>         Hostname of the tmux server"
+      echo "  --window-index <n>    Window index number"
+      echo "  --pane-pid <pid>      PID of the pane process"
+      echo "  --pane-title <title>  Pane title"
+      echo "  --window-panes <n>    Number of panes in the window"
+      echo "  --window-activity <t> Timestamp of last window activity"
+      echo "  --pane-dead <0|1>     Whether the pane process has exited"
+      echo "  --session-id <id>     Unique session ID"
+      echo "  --session-windows <n> Number of windows in the session"
       echo ""
       echo "Config file: \$XDG_CONFIG_HOME/tmux-notify/config"
       exit 0
@@ -123,5 +159,14 @@ curl -sf --max-time 10 -G \
   --data-urlencode "command=$COMMAND" \
   --data-urlencode "active=$ACTIVE" \
   --data-urlencode "clients=$CLIENTS" \
+  --data-urlencode "host=$HOST" \
+  --data-urlencode "window_index=$WINDOW_INDEX" \
+  --data-urlencode "pane_pid=$PANE_PID" \
+  --data-urlencode "pane_title=$PANE_TITLE" \
+  --data-urlencode "window_panes=$WINDOW_PANES" \
+  --data-urlencode "window_activity=$WINDOW_ACTIVITY" \
+  --data-urlencode "pane_dead=$PANE_DEAD" \
+  --data-urlencode "session_id=$SESSION_ID" \
+  --data-urlencode "session_windows=$SESSION_WINDOWS" \
   "$WEBHOOK_URL" >/dev/null 2>&1 || true
 
