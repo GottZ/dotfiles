@@ -75,6 +75,7 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 | Plugins | TPM (auto-installed), tmux-sensible, tmux-fzf (`Ctrl-f`). |
 | Keybindings | vi copy-mode (`v`/`y`), `r` reload config, `g` next pane, `n`/`p` next/prev window, `{`/`}` swap panes. |
 | Status bar | Left: session name + attach count. Right: time + date, prefix/green indicator. Window tabs with Nerd Font icons for active, last, marked, zoomed, bell states. |
+| Bell notify | `alert-bell` hook calls `tmux-notify` to forward bell events via webhook (see [tmux-notify](#tmux-notify)). |
 | Settings | 50k history, base-index 1, mouse on, 256color + RGB, extended-keys. |
 
 #### Zsh
@@ -113,6 +114,7 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 | `dpsql` | Connects to a Dockerized PostgreSQL: extracts `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` and container IP via `docker inspect`, then runs `psql`. Usage: `dpsql <container> [psql flags]`. |
 | `loadavg` | Compiled C binary — prints 1/5/15 min load averages. |
 | `colorcheck` | Awk script — prints a 77-column truecolor gradient to test terminal capabilities. |
+| `tmux-notify` | Forwards tmux bell events to a webhook with full session context. See [tmux-notify](#tmux-notify) below. |
 | `dircolors` | Wrapper around `/usr/bin/dircolors` that prefers `~/.dircolors`, falls back to `/etc/DIR_COLORS`. |
 | `lscolors` | Displays every `LS_COLORS` entry in its assigned colour with type descriptions. Useful for auditing the dircolors database. |
 
@@ -134,6 +136,182 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 - **Modern CLI** — lsd, bat, yazi, fzf integrated via zshrc; grml-zsh-config as base.
 - **Hardened SSH** — key-only auth, 1 attempt, 10 s grace period.
 - **Low-latency audio/USB** — modprobe and WirePlumber tweaks to disable power-save and suspend.
+- **tmux-notify** — webhook-based bell notifications with full tmux context and debouncing.
+
+---
+
+## tmux-notify
+
+Forwards tmux bell events to a configurable webhook endpoint. Useful for getting notified when a long-running command (e.g. Claude Code) finishes in a detached or background window.
+
+### Parameters sent to the webhook
+
+| Parameter | tmux variable | Description |
+|-----------|---------------|-------------|
+| `session` | `#{session_name}` | Session name |
+| `window` | `#{window_name}` | Window name |
+| `pane` | `#{pane_index}` | Pane index |
+| `path` | `#{pane_current_path}` | Working directory of the pane |
+| `command` | `#{pane_current_command}` | Current command running in the pane |
+| `active` | `#{window_active}` | `1` if the bell window is currently focused, `0` otherwise |
+| `clients` | `#{session_attached}` | Number of clients attached to the session (`0` = nobody connected) |
+| `host` | `#{host}` | Hostname of the tmux server |
+| `window_index` | `#{window_index}` | Window index number |
+| `pane_pid` | `#{pane_pid}` | PID of the pane process |
+| `pane_title` | `#{pane_title}` | Pane title |
+| `window_panes` | `#{window_panes}` | Number of panes in the window |
+| `window_activity` | `#{window_activity}` | Unix timestamp of last window activity |
+| `pane_dead` | `#{pane_dead}` | `1` if the pane process has exited |
+| `session_id` | `#{session_id}` | Internal tmux session ID |
+| `session_windows` | `#{session_windows}` | Number of windows in the session |
+
+All parameters are sent as URL-encoded GET query parameters.
+
+### Configuration
+
+In order of precedence:
+
+1. **CLI flags** — `--webhook-url`, `--debounce`
+2. **Environment variables** — `TMUX_NOTIFY_WEBHOOK_URL`, `TMUX_NOTIFY_DEBOUNCE`
+3. **Config file** — `~/.config/tmux-notify/config`
+
+```bash
+# ~/.config/tmux-notify/config
+WEBHOOK_URL="https://example.com/webhook/your-endpoint"
+DEBOUNCE_SECONDS=5
+```
+
+### tmux integration
+
+The `alert-bell` hook in `tmux.conf` calls `tmux-notify` whenever a bell fires in a non-active window:
+
+```tmux
+if-shell 'command -v tmux-notify' {
+  set-option -g monitor-bell on
+  set-hook -g alert-bell 'run-shell -b "tmux-notify --session #{q:session_name} --window #{q:window_name} --pane #{q:pane_index} --path #{q:pane_current_path} --command #{q:pane_current_command} --active #{window_active} --clients #{session_attached} --host #{host} --window-index #{window_index} --pane-pid #{pane_pid} --pane-title #{q:pane_title} --window-panes #{window_panes} --window-activity #{window_activity} --pane-dead #{pane_dead} --session-id #{session_id} --session-windows #{session_windows}"'
+}
+```
+
+### Example: n8n webhook workflow
+
+A minimal n8n workflow that receives the bell event, suppresses notifications when the user is already looking at the window (`active != 1`), and sends an SMS:
+
+```
+Webhook (GET) → If (active != "1") → Code (format message) → HTTP Request (send SMS)
+```
+
+<details>
+<summary>n8n workflow JSON (click to expand)</summary>
+
+```json
+{
+  "name": "tmux sms",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "Webhook",
+      "webhookId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "leftValue": "={{ $json.query.active }}",
+              "rightValue": "1",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [208, 0],
+      "id": "00000000-0000-0000-0000-000000000003",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  const {session, window, pane, path, command} = item.json.query;\n  item.json.sms = `${session}:${pane}/${window} pings in ${path.length > 30 ? '…' : ''}${path.substr(-30)}`;\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 0],
+      "id": "00000000-0000-0000-0000-000000000004",
+      "name": "sms prep"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.com/api/webhook/your-sms-endpoint",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.sms }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [624, 0],
+      "id": "00000000-0000-0000-0000-000000000005",
+      "name": "send sms"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "If", "type": "main", "index": 0}]]
+    },
+    "If": {
+      "main": [[{"node": "sms prep", "type": "main", "index": 0}]]
+    },
+    "sms prep": {
+      "main": [[{"node": "send sms", "type": "main", "index": 0}]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+```
+
+</details>
+
+The Code node formats the SMS message as `session:pane/window pings in …/path` (truncated to 30 chars). The If node filters out bells from the currently active window — no notification if you're already looking at it.
 
 ---
 
