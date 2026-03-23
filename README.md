@@ -197,11 +197,9 @@ if-shell 'command -v tmux-notify' {
 A minimal n8n workflow that receives the bell event and sends an SMS — unless the user is connected and looking at the active window:
 
 ```
-Webhook (POST) → inactive window?
+Webhook (POST) → inactive or disconnected? (active=0 OR clients=0)
   ├─ yes → sms prep → send sms
-  └─ no  → nobody connected?
-             ├─ yes → sms prep → send sms
-             └─ no  → [stop, user is watching]
+  └─ no  → [stop, user is watching]
 ```
 
 <details>
@@ -237,54 +235,32 @@ Webhook (POST) → inactive window?
             {
               "id": "00000000-0000-0000-0000-000000000002",
               "leftValue": "={{ $json.body.active }}",
-              "rightValue": "=1",
+              "rightValue": "=0",
               "operator": {
                 "type": "number",
-                "operation": "notEquals"
+                "operation": "equals"
               }
-            }
-          ],
-          "combinator": "and"
-        },
-        "looseTypeValidation": "={{ true }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [208, 0],
-      "id": "00000000-0000-0000-0000-000000000003",
-      "name": "inactive window"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 3
-          },
-          "conditions": [
+            },
             {
-              "id": "00000000-0000-0000-0000-000000000004",
+              "id": "00000000-0000-0000-0000-000000000003",
               "leftValue": "={{ $json.body.clients }}",
-              "rightValue": 1,
+              "rightValue": 0,
               "operator": {
                 "type": "number",
-                "operation": "lt"
+                "operation": "equals"
               }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
         "looseTypeValidation": true,
         "options": {}
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [416, 80],
-      "id": "00000000-0000-0000-0000-000000000005",
-      "name": "nobody connected"
+      "position": [208, 0],
+      "id": "00000000-0000-0000-0000-000000000004",
+      "name": "inactive or disconnected"
     },
     {
       "parameters": {
@@ -292,8 +268,8 @@ Webhook (POST) → inactive window?
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [624, 0],
-      "id": "00000000-0000-0000-0000-000000000006",
+      "position": [416, 0],
+      "id": "00000000-0000-0000-0000-000000000005",
       "name": "sms prep"
     },
     {
@@ -322,23 +298,20 @@ Webhook (POST) → inactive window?
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [832, 0],
-      "id": "00000000-0000-0000-0000-000000000007",
+      "position": [624, 0],
+      "id": "00000000-0000-0000-0000-000000000006",
       "name": "send sms"
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{"node": "inactive window", "type": "main", "index": 0}]]
+      "main": [[{"node": "inactive or disconnected", "type": "main", "index": 0}]]
     },
-    "inactive window": {
+    "inactive or disconnected": {
       "main": [
         [{"node": "sms prep", "type": "main", "index": 0}],
-        [{"node": "nobody connected", "type": "main", "index": 0}]
+        []
       ]
-    },
-    "nobody connected": {
-      "main": [[{"node": "sms prep", "type": "main", "index": 0}]]
     },
     "sms prep": {
       "main": [[{"node": "send sms", "type": "main", "index": 0}]]
@@ -353,7 +326,7 @@ Webhook (POST) → inactive window?
 
 </details>
 
-The Code node formats the SMS message as `session:pane/window pings in …/path` (truncated to 30 chars). Notifications are suppressed only when a client is connected **and** the bell window is active — otherwise the SMS is sent.
+The Code node formats the SMS message as `session:pane/window pings in …/path` (truncated to 30 chars). The If node sends an SMS when the window is inactive (`active=0`) **or** nobody is connected (`clients=0`) — only suppressed when a client is attached and looking at the bell window.
 
 ---
 
