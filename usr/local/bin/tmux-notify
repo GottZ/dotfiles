@@ -150,23 +150,35 @@ date +%s > "$debounce_file"
 # --- Cleanup stale debounce files (older than 1 hour, non-blocking) ---
 find "$CACHE_DIR" -maxdepth 1 -type f -mmin +60 -delete 2>/dev/null &
 
+# --- Build JSON payload ---
+json_string() { printf '%s' "$1" | sed 's/\\/\\\\/g;s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g'; }
+json_number() { [[ "$1" =~ ^[0-9]+$ ]] && printf '%s' "$1" || printf '0'; }
+
+PAYLOAD=$(cat <<ENDJSON
+{
+  "session": "$(json_string "$SESSION")",
+  "window": "$(json_string "$WINDOW")",
+  "pane": $(json_number "$PANE"),
+  "path": "$(json_string "$PATH_DIR")",
+  "command": "$(json_string "$COMMAND")",
+  "active": $(json_number "$ACTIVE"),
+  "clients": $(json_number "$CLIENTS"),
+  "host": "$(json_string "$HOST")",
+  "window_index": $(json_number "$WINDOW_INDEX"),
+  "pane_pid": $(json_number "$PANE_PID"),
+  "pane_title": "$(json_string "$PANE_TITLE")",
+  "window_panes": $(json_number "$WINDOW_PANES"),
+  "window_activity": $(json_number "$WINDOW_ACTIVITY"),
+  "pane_dead": $(json_number "$PANE_DEAD"),
+  "session_id": "$(json_string "$SESSION_ID")",
+  "session_windows": $(json_number "$SESSION_WINDOWS")
+}
+ENDJSON
+)
+
 # --- Send webhook ---
-curl -sf --max-time 10 -G \
-  --data-urlencode "session=$SESSION" \
-  --data-urlencode "window=$WINDOW" \
-  --data-urlencode "pane=$PANE" \
-  --data-urlencode "path=$PATH_DIR" \
-  --data-urlencode "command=$COMMAND" \
-  --data-urlencode "active=$ACTIVE" \
-  --data-urlencode "clients=$CLIENTS" \
-  --data-urlencode "host=$HOST" \
-  --data-urlencode "window_index=$WINDOW_INDEX" \
-  --data-urlencode "pane_pid=$PANE_PID" \
-  --data-urlencode "pane_title=$PANE_TITLE" \
-  --data-urlencode "window_panes=$WINDOW_PANES" \
-  --data-urlencode "window_activity=$WINDOW_ACTIVITY" \
-  --data-urlencode "pane_dead=$PANE_DEAD" \
-  --data-urlencode "session_id=$SESSION_ID" \
-  --data-urlencode "session_windows=$SESSION_WINDOWS" \
+curl -sf --max-time 10 \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD" \
   "$WEBHOOK_URL" >/dev/null 2>&1 || true
 

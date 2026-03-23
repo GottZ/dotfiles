@@ -165,7 +165,7 @@ Forwards tmux bell events to a configurable webhook endpoint. Useful for getting
 | `session_id` | `#{session_id}` | Internal tmux session ID |
 | `session_windows` | `#{session_windows}` | Number of windows in the session |
 
-All parameters are sent as URL-encoded GET query parameters.
+All parameters are sent as a JSON POST body with proper types (strings and numbers).
 
 ### Configuration
 
@@ -197,7 +197,7 @@ if-shell 'command -v tmux-notify' {
 A minimal n8n workflow that receives the bell event, suppresses notifications when the user is already looking at the window (`active != 1`), and sends an SMS:
 
 ```
-Webhook (GET) → If (active != "1") → Code (format message) → HTTP Request (send SMS)
+Webhook (POST) → If (active != 1) → Code (format message) → HTTP Request (send SMS)
 ```
 
 <details>
@@ -209,6 +209,7 @@ Webhook (GET) → If (active != "1") → Code (format message) → HTTP Request 
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         "options": {}
       },
@@ -225,23 +226,23 @@ Webhook (GET) → If (active != "1") → Code (format message) → HTTP Request 
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
+            "typeValidation": "loose",
             "version": 3
           },
           "conditions": [
             {
               "id": "00000000-0000-0000-0000-000000000002",
-              "leftValue": "={{ $json.query.active }}",
-              "rightValue": "1",
+              "leftValue": "={{ $json.body.active }}",
+              "rightValue": "=1",
               "operator": {
-                "type": "string",
+                "type": "number",
                 "operation": "notEquals"
               }
             }
           ],
           "combinator": "and"
         },
-        "looseTypeValidation": "={{ false }}",
+        "looseTypeValidation": "={{ true }}",
         "options": {}
       },
       "type": "n8n-nodes-base.if",
@@ -252,7 +253,7 @@ Webhook (GET) → If (active != "1") → Code (format message) → HTTP Request 
     },
     {
       "parameters": {
-        "jsCode": "for (const item of $input.all()) {\n  const {session, window, pane, path, command} = item.json.query;\n  item.json.sms = `${session}:${pane}/${window} pings in ${path.length > 30 ? '…' : ''}${path.substr(-30)}`;\n}\nreturn $input.all();"
+        "jsCode": "for (const item of $input.all()) {\n  const {session, window, pane, path} = item.json.body;\n  item.json.sms = `${session}:${pane}/${window} pings in ${path.length > 30 ? '…' : ''}${path.substr(-30)}`;\n}\nreturn $input.all();"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
