@@ -91,16 +91,19 @@ for host, ssh_config in pairs(wezterm.enumerate_ssh_hosts()) do
   if host ~= '*' then
     local address = (ssh_config.hostname or host) .. (ssh_config.port and (":" .. ssh_config.port) or "")
     local user = ssh_config.user or "root"
+    local overrides = { identitiesonly = "no" }
     table.insert(config.ssh_domains, {
       name = host,
       remote_address = address,
       username = user,
       multiplexing = "None",
+      ssh_option = overrides,
     })
     table.insert(config.ssh_domains, {
       name = "mux-" .. host,
       remote_address = address,
       username = user,
+      ssh_option = overrides,
     })
   end
 end
@@ -222,6 +225,14 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
       },
     })
   end
+
+  table.insert(launch_menu, {
+    label = "open wezterm configuration directory",
+    args = {
+      "explorer.exe",
+      wezterm.config_dir,
+    },
+  })
 
   config.launch_menu = launch_menu
 
