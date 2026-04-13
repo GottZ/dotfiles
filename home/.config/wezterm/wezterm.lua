@@ -86,12 +86,47 @@ if wezterm.target_triple == 'x86_64-pc-windows-msvc' then
   end
 end
 
+-- Detect whether the running wezterm contains the IdentitiesOnly fix from
+-- https://github.com/wezterm/wezterm/pull/7739 by fetching auth.rs at the
+-- build's commit and looking for a marker function only added by the PR.
+-- Cached per-version in config_dir so we only hit the network on upgrade.
+local function has_identitiesonly_fix()
+  local version = wezterm.version
+  local commit = version:match("-([0-9a-f]+)$")
+  if not commit then return false end
+
+  local cache = wezterm.config_dir .. "/.pr7739-" .. version
+  local f = io.open(cache, "r")
+  if f then local v = f:read("*a"); f:close(); return v == "yes" end
+
+  local function fetch(repo)
+    local ok, out = wezterm.run_child_process{
+      "curl", "-fsSL",
+      ("https://raw.githubusercontent.com/%s/%s/wezterm-ssh/src/auth.rs")
+        :format(repo, commit),
+    }
+    return ok and out or nil
+  end
+
+  local src = fetch("wezterm/wezterm") or fetch("GottZ/wezterm")
+  if not src then return false end
+
+  local present = src:find("allowed_agent_key_blobs", 1, true) ~= nil
+  local w = io.open(cache, "w")
+  if w then w:write(present and "yes" or "no"); w:close() end
+  return present
+end
+
+local identitiesonly_override = has_identitiesonly_fix() and nil or "no"
+
 config.ssh_domains = {}
 for host, ssh_config in pairs(wezterm.enumerate_ssh_hosts()) do
   if host ~= '*' then
     local address = (ssh_config.hostname or host) .. (ssh_config.port and (":" .. ssh_config.port) or "")
     local user = ssh_config.user or "root"
-    local overrides = { identitiesonly = "no" }
+    local overrides = identitiesonly_override
+      and { identitiesonly = identitiesonly_override }
+      or {}
     table.insert(config.ssh_domains, {
       name = host,
       remote_address = address,
