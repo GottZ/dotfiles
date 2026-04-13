@@ -3,6 +3,12 @@
 	"experimental": true,
 	"ipv6": true,
 	"fixed-cidr-v6": "fd02:1337:2::/64",
+	"log-driver": "json-file",
+	"log-opts": {
+		"max-size": "50m",
+		"max-file": "3"
+	},
+	"no-new-privileges": true,
 	"default-address-pools": [
 		{
 			"base": "172.32.0.0/12",

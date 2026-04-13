@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+PAM_DIR="${1:-/etc/pam.d}"
+
+files=()
+while IFS= read -r f; do
+    files+=("$f")
+done < <(grep -rl 'nullok' "$PAM_DIR" 2>/dev/null)
+
+if [[ ${#files[@]} -eq 0 ]]; then
+    echo "nullok nicht gefunden in $PAM_DIR"
+    exit 0
+fi
+
+for f in "${files[@]}"; do
+    echo "$(basename "$f"): $(grep -c 'nullok' "$f") Treffer"
+done
+
+read -rp "nullok entfernen? [y/N] " confirm
+[[ "$confirm" =~ ^[yY]$ ]] || exit 0
+
+for f in "${files[@]}"; do
+    sed -i 's/\s*nullok\b//g' "$f"
+    echo "bereinigt: $f"
+done

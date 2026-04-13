@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# qemu-test-decrypt — boot the current kernel+initramfs in QEMU with live
+# disks attached read-only via qcow2 overlays. Verifies that the encrypt hook
+# can unlock the root device without touching the real disks or creating large
+# artifacts.
+#
+# Usage: qemu-test-decrypt [OPTIONS] [DISK...]
+#
+#   -k KERNEL   kernel image (default: /boot/vmlinuz-linux)
+#   -i INITRD   initramfs (default: /boot/initramfs-linux.img, intel-ucode
+#               auto-prepended if present)
+#   -c CMDLINE  kernel cmdline (default: /proc/cmdline minus BOOT_IMAGE=,
+#               quiet and loglevel= stripped, net.ifnames=0 appended so the
+#               virtio NIC keeps the eth0 name that host ip= expects)
+#   -m MEM      guest memory (default: 2G)
+#   -s SMP      guest cpus (default: 2)
+#   -p PORT     host port forwarded to guest ssh (default: 2222)
+#   -n          dry run — print what would happen and exit
+#   -h          show this help
+#
+# If no DISK is given, the physical disks backing the current root device
+# are auto-detected via lsblk (walks through crypt/raid/lvm/part to disks).
+#
+# Disks are wrapped in throwaway qcow2 overlays (qemu-img -b). The real
+# devices are never written to. Overlays live in a mktemp dir and are removed
+# when QEMU exits.
+#
+# Unlock via the encryptssh/tinyssh flow with:
+#   ssh -p 2222 root@localhost
+#
+# Inside the QEMU serial console, Ctrl-A X quits.
+
+set -euo pipefail
+
+KERNEL=/boot/vmlinuz-linux
+INITRD=/boot/initramfs-linux.img
+UCODE=/boot/intel-ucode.img
+CMDLINE=$(tr -s ' ' '\n' < /proc/cmdline \
+  | grep -Ev '^(BOOT_IMAGE=.*|quiet|loglevel=.*)$' \
+  | paste -sd' ')
+EXTRA_APPEND="console=ttyS0 net.ifnames=0"
+MEM=2G
+SMP=2
+SSH_PORT=2222
+DRY_RUN=0
+
+usage() { sed -n '2,31p' "$0" | sed -e 's/^# \{0,1\}//'; }
+
+autodetect_disks() {
+  local root_src
+  root_src=$(findmnt -no SOURCE / 2>/dev/null || true)
+  [[ -n $root_src ]] || return 1
+  root_src=${root_src%%\[*}
+  lsblk -s -l -npo NAME,TYPE "$root_src" 2>/dev/null \
+    | awk '$2=="disk"{print $1}' \
+    | sort -u
+}
+
+while getopts "k:i:c:m:s:p:nh" opt; do
+  case $opt in
+    k) KERNEL=$OPTARG ;;
+    i) INITRD=$OPTARG ;;
+    c) CMDLINE=$OPTARG ;;
+    m) MEM=$OPTARG ;;
+    s) SMP=$OPTARG ;;
+    p) SSH_PORT=$OPTARG ;;
+    n) DRY_RUN=1 ;;
+    h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ $# -eq 0 ]]; then
+  mapfile -t disks < <(autodetect_disks)
+  if [[ ${#disks[@]} -eq 0 ]]; then
+    echo "error: could not auto-detect disks backing /" >&2
+    echo "       pass them explicitly as arguments" >&2
+    exit 1
+  fi
+  set -- "${disks[@]}"
+  echo "==> Auto-detected disks: $*"
+fi
+
+if [[ $EUID -ne 0 ]]; then
+  echo "error: must run as root (block device access)" >&2
+  exit 1
+fi
+
+command -v qemu-system-x86_64 >/dev/null \
+  || { echo "error: qemu-system-x86_64 not found" >&2; exit 1; }
+command -v qemu-img >/dev/null \
+  || { echo "error: qemu-img not found" >&2; exit 1; }
+
+for f in "$KERNEL" "$INITRD"; do
+  [[ -r $f ]] || { echo "error: cannot read $f" >&2; exit 1; }
+done
+
+initrds=()
+[[ -r $UCODE ]] && initrds+=("$UCODE")
+initrds+=("$INITRD")
+
+tmpdir=$(mktemp -d -t qemu-test-decrypt.XXXXXXXX)
+trap 'rm -rf "$tmpdir"' EXIT
+
+# QEMU's -initrd takes one file; concat microcode + initramfs cpio archives
+# here the same way GRUB/systemd-boot do it at load time.
+initrd_merged="$tmpdir/initrd.merged"
+cat "${initrds[@]}" > "$initrd_merged"
+
+drives=()
+i=0
+for disk in "$@"; do
+  [[ -b $disk ]] || { echo "error: $disk is not a block device" >&2; exit 1; }
+  overlay="$tmpdir/overlay${i}.qcow2"
+  qemu-img create -q -f qcow2 -F raw -b "$disk" "$overlay" >/dev/null
+  drives+=(-drive "file=$overlay,if=virtio,format=qcow2,cache=unsafe")
+  i=$((i + 1))
+done
+
+kvm=()
+[[ -r /dev/kvm && -w /dev/kvm ]] && kvm=(-enable-kvm -cpu host)
+
+cat <<EOF
+==> Booting QEMU test environment
+    kernel : $KERNEL
+    initrd : ${initrds[*]}
+    cmdline: $CMDLINE $EXTRA_APPEND
+    disks  : $*
+    overlay: $tmpdir
+    unlock : ssh -p $SSH_PORT root@localhost
+    quit   : Ctrl-A X on serial console
+
+EOF
+
+if [[ $DRY_RUN -eq 1 ]]; then
+  echo "==> Dry run — not launching QEMU"
+  exit 0
+fi
+
+qemu-system-x86_64 \
+  "${kvm[@]}" -smp "$SMP" -m "$MEM" \
+  -kernel "$KERNEL" -initrd "$initrd_merged" \
+  -append "$CMDLINE $EXTRA_APPEND" \
+  "${drives[@]}" \
+  -netdev "user,id=n0,hostfwd=tcp::${SSH_PORT}-:22" \
+  -device e1000e,netdev=n0 \
+  -nographic \
+  -no-reboot

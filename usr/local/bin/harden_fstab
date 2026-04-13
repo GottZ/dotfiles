@@ -1,0 +1,83 @@
+#!/bin/bash
+set -euo pipefail
+
+FSTAB="${1:-/etc/fstab}"
+DRY_RUN=false
+[[ "${2:-}" == "--dry-run" ]] && DRY_RUN=true
+
+changed=false
+
+ensure_opt() {
+    local mount="$1" opt="$2"
+    if grep -qE "^\S+\s+${mount}\s" "$FSTAB"; then
+        if ! grep -E "^\S+\s+${mount}\s" "$FSTAB" | grep -q "$opt"; then
+            echo "$mount: +$opt"
+            if ! $DRY_RUN; then
+                sed -i -E "/^\S+\s+${mount//\//\\/}\s/{s/($(echo "$opt" | cut -d= -f1)[^ ,]*)//g; s/,+/,/g; s/,\s/ /; s/\s([a-z])/ \1/}" "$FSTAB"
+                sed -i -E "/^\S+\s+${mount//\//\\/}\s/s/(\s)(rw|ro)/\1\2,${opt}/" "$FSTAB"
+            fi
+            changed=true
+        else
+            echo "$mount: $opt bereits gesetzt"
+        fi
+    else
+        echo "$mount: nicht in fstab gefunden"
+    fi
+}
+
+replace_umask() {
+    local mount="$1" fmask="$2" dmask="$3"
+    if grep -qE "^\S+\s+${mount}\s" "$FSTAB"; then
+        for pair in "fmask=$fmask" "dmask=$dmask"; do
+            key="${pair%%=*}"
+            if grep -E "^\S+\s+${mount}\s" "$FSTAB" | grep -q "$key="; then
+                current=$(grep -E "^\S+\s+${mount}\s" "$FSTAB" | grep -oP "${key}=\K[0-9]+")
+                if [[ "$current" != "${pair##*=}" ]]; then
+                    echo "$mount: $key=$current -> $pair"
+                    if ! $DRY_RUN; then
+                        sed -i -E "/^\S+\s+${mount//\//\\/}\s/s/${key}=[0-9]+/${pair}/" "$FSTAB"
+                    fi
+                    changed=true
+                else
+                    echo "$mount: $pair bereits gesetzt"
+                fi
+            fi
+        done
+    fi
+}
+
+add_tmpfs() {
+    if grep -qE "^\S+\s+/tmp\s" "$FSTAB"; then
+        echo "/tmp: bereits in fstab"
+    else
+        echo "/tmp: tmpfs-Eintrag hinzufügen"
+        if ! $DRY_RUN; then
+            printf '\n# /tmp hardening\ntmpfs\t/tmp\ttmpfs\trw,nosuid,nodev,noexec,nr_inodes=1048576,inode64\t0 0\n' >> "$FSTAB"
+        fi
+        changed=true
+    fi
+}
+
+echo "=== fstab hardening ==="
+echo "Datei: $FSTAB"
+$DRY_RUN && echo "(dry-run)"
+echo ""
+
+# /tmp: tmpfs mit noexec,nosuid,nodev
+add_tmpfs
+ensure_opt /tmp noexec
+ensure_opt /tmp nosuid
+ensure_opt /tmp nodev
+
+# /boot: noexec,nosuid,nodev + restriktive umask
+ensure_opt /boot noexec
+ensure_opt /boot nosuid
+ensure_opt /boot nodev
+replace_umask /boot 0077 0077
+
+echo ""
+if $changed; then
+    echo "Änderungen geschrieben. Aktiv nach remount/reboot."
+else
+    echo "Keine Änderungen nötig."
+fi
