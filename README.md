@@ -20,6 +20,9 @@ ln -sf /opt/dotfiles/home/.config/tmux         ~/.config/tmux
 ln -sf /opt/dotfiles/home/.config/ghostty      ~/.config/ghostty
 ln -sf /opt/dotfiles/home/.config/wezterm      ~/.config/wezterm
 ln -sf /opt/dotfiles/home/.ssh/allowed_signers ~/.ssh/allowed_signers
+
+# then verify everything landed where it should (read-only)
+/opt/dotfiles/.bin/dotfiles
 ```
 
 ---
@@ -126,6 +129,22 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 
 ---
 
+### `.bin/` — repo tooling
+
+Added to `$PATH` by `etc/profile.d/00-local-bin.sh`, so these run from anywhere once the profile scripts are linked.
+
+| Tool | What it does |
+|------|-------------|
+| `dotfiles` | Read-only deployment check. For every tracked file under `etc/`, `usr/` and `home/` it derives the live target (`etc/`,`usr/` → `/`, `home/` → `$HOME`) and verifies that target actually *resolves* back to the repo copy. One check covers both direct symlinks (`/etc/gitconfig`) and parent-directory symlinks (`~/.config/wezterm` → repo dir), and also catches plain copies, foreign symlinks and dangling links. Buckets results into `linked` / `missing` / `diverged` / `broken` / `skipped`; templates (`*.example`, `*.template`, `*.sample`, `__*`) are skipped. Exit `0` = everything linked, `1` = something off — usable in CI/pre-commit. |
+
+```console
+$ dotfiles            # default: print only problems + summary
+$ dotfiles -a         # also list linked & skipped files
+$ dotfiles -q         # summary line only
+```
+
+---
+
 ## Highlighted features
 
 - **Kanagawa colour scheme** — consistent palette across Ghostty, WezTerm and tmux.
@@ -137,6 +156,7 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 - **Hardened SSH** — key-only auth, 1 attempt, 10 s grace period.
 - **Low-latency audio/USB** — modprobe and WirePlumber tweaks to disable power-save and suspend.
 - **tmux-notify** — webhook-based bell notifications with full tmux context and debouncing.
+- **Deployment check** — `dotfiles` verifies every tracked file is actually symlinked into place (read-only), reporting missing, diverged and broken links.
 
 ---
 

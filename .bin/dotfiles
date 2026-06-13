@@ -1,7 +1,151 @@
 #!/usr/bin/env zsh
+#
+# dotfiles — check how this repo is deployed into the live system.
+#
+# This repo mirrors the target filesystem layout:
+#
+#     etc/…   →  /etc/…
+#     usr/…   →  /usr/…
+#     home/…  →  $HOME/…
+#
+# Files get deployed by symlinking them into place — either directly
+# (/etc/gitconfig) or via a parent-directory symlink (~/.config/wezterm points
+# at the whole repo dir). This tool checks, for every tracked file, whether its
+# target path actually *resolves* to the repo copy. That single check covers
+# both granularities and also catches plain copies / foreign symlinks.
+#
+# It is strictly read-only: it never creates, changes or deletes anything.
+# By default it prints only problems; pass -a to list everything.
+#
+# Not deployed verbatim (reported as "skipped"):
+#   *.example / *.template / *.sample   — copied & edited manually
+#   __*                                 — host-specific templates (e.g. __hetzner.daemon.json)
 
-if [[ -r /opt/dotfiles ]]; then
-  cd /opt/dotfiles
-else
-  exit 1
-fi
+emulate -L zsh
+setopt extended_glob pipefail
+
+SELF=${0:A}
+REPO=${SELF:h:h}
+[[ -e $REPO/.git ]] || REPO=/opt/dotfiles
+
+# repo-relative path → live target path (fails for non-deployable meta files)
+target_of() {
+  case $1 in
+    (home/*)      print -r -- "$HOME/${1#home/}" ;;
+    (etc/*|usr/*) print -r -- "/$1" ;;
+    (*)           return 1 ;;
+  esac
+}
+
+# present in the repo but not meant to be symlinked as-is
+is_template() {
+  local base=${1:t}
+  [[ $base == __* ]] && return 0
+  [[ $base == *.example || $base == *.template || $base == *.sample ]] && return 0
+  return 1
+}
+
+usage() {
+  print -r -- "usage: dotfiles [check] [-a|--all] [-q|--quiet]"
+  print -r -- "       dotfiles help"
+  print -r --
+  print -r -- "  check   report which tracked repo files are symlinked into place"
+  print -r -- "          (etc/,usr/ → /   home/ → \$HOME). Read-only."
+  print -r -- "    -a, --all     also list correctly linked and skipped files"
+  print -r -- "    -q, --quiet   print only the summary line"
+  print -r --
+  print -r -- "  exit status: 0 = everything linked, 1 = something missing/diverged/broken"
+}
+
+cmd_check() {
+  local all=0 quiet=0
+  while (( $# )); do
+    case $1 in
+      (-a|--all)   all=1 ;;
+      (-q|--quiet) quiet=1 ;;
+      (-h|--help)  usage; return 0 ;;
+      (*) print -ru2 -- "dotfiles check: unknown option: $1"; return 2 ;;
+    esac
+    shift
+  done
+
+  # colors only on a tty, and honour NO_COLOR
+  local c_ok= c_miss= c_wrong= c_broken= c_skip= c_dim= c_rst= c_b=
+  if [[ -t 1 && -z $NO_COLOR ]]; then
+    c_ok=$'\e[32m'; c_miss=$'\e[31m'; c_wrong=$'\e[33m'
+    c_broken=$'\e[35m'; c_skip=$'\e[90m'; c_dim=$'\e[2m'
+    c_rst=$'\e[0m'; c_b=$'\e[1m'
+  fi
+
+  local -a files
+  files=( ${(f)"$(cd -- $REPO 2>/dev/null && git ls-files -- etc usr home 2>/dev/null)"} )
+  if (( ! ${#files} )); then
+    print -ru2 -- "dotfiles check: no tracked files under etc/ usr/ home/ in $REPO"
+    return 2
+  fi
+
+  local -a o_miss o_wrong o_broken o_ok o_skip
+  local rel src dst pretty via why
+
+  for rel in $files; do
+    dst=$(target_of $rel) || continue
+    src=$REPO/$rel
+    pretty=${dst/#$HOME/'~'}
+    via= why=
+
+    if is_template $rel; then
+      o_skip+=( "${c_skip}·${c_rst} ${pretty}  ${c_dim}(template/example)${c_rst}" )
+    elif [[ -L $dst && ! -e $dst ]]; then
+      o_broken+=( "${c_broken}⊘${c_rst} ${pretty}  ${c_dim}dangling → $(readlink -- $dst)${c_rst}" )
+    elif [[ ! -e $dst && ! -L $dst ]]; then
+      o_miss+=( "${c_miss}✗${c_rst} ${pretty}" )
+    elif [[ ${dst:A} == ${src:A} ]]; then
+      [[ -L $dst ]] || via="  ${c_dim}(via dir symlink)${c_rst}"
+      o_ok+=( "${c_ok}✓${c_rst} ${pretty}${via}" )
+    else
+      if [[ -L $dst ]]; then why="points to $(readlink -- $dst)"
+      elif [[ -d $dst ]]; then why="real directory"
+      else why="real file (not a symlink)"; fi
+      o_wrong+=( "${c_wrong}≠${c_rst} ${pretty}  ${c_dim}${why}${c_rst}" )
+    fi
+  done
+
+  if (( ! quiet )); then
+    print -r -- "${c_b}dotfiles check${c_rst} ${c_dim}— ${REPO} → / & ${HOME}${c_rst}"
+    print -r --
+    if (( ${#o_broken} )); then
+      print -r -- "${c_b}${c_broken}broken symlinks${c_rst}"
+      print -rl -- $o_broken; print -r --
+    fi
+    if (( ${#o_wrong} )); then
+      print -r -- "${c_b}${c_wrong}diverged (target ≠ repo)${c_rst}"
+      print -rl -- $o_wrong; print -r --
+    fi
+    if (( ${#o_miss} )); then
+      print -r -- "${c_b}${c_miss}missing (not linked)${c_rst}"
+      print -rl -- $o_miss; print -r --
+    fi
+    if (( all && ${#o_ok} )); then
+      print -r -- "${c_b}${c_ok}linked${c_rst}"
+      print -rl -- $o_ok; print -r --
+    fi
+    if (( all && ${#o_skip} )); then
+      print -r -- "${c_b}${c_skip}skipped${c_rst}"
+      print -rl -- $o_skip; print -r --
+    fi
+  fi
+
+  local checked=$(( ${#o_ok} + ${#o_miss} + ${#o_wrong} + ${#o_broken} ))
+  print -r -- "${c_b}summary${c_rst} ${c_ok}${#o_ok} linked${c_rst} · ${c_miss}${#o_miss} missing${c_rst} · ${c_wrong}${#o_wrong} diverged${c_rst} · ${c_broken}${#o_broken} broken${c_rst} · ${c_skip}${#o_skip} skipped${c_rst} ${c_dim}(${checked} checked)${c_rst}"
+
+  (( ${#o_miss} + ${#o_wrong} + ${#o_broken} == 0 ))
+}
+
+# --- dispatch: default subcommand is `check`; options without a verb go to it ---
+cmd=check
+if (( $# )) && [[ $1 != -* ]]; then cmd=$1; shift; fi
+case $cmd in
+  (check|status) cmd_check "$@" ;;
+  (help|-h|--help) usage ;;
+  (*) print -ru2 -- "dotfiles: unknown command: $cmd"; usage >&2; exit 2 ;;
+esac
