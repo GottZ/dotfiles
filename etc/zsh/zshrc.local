@@ -22,6 +22,8 @@ fi
 
 if check_com -c bat; then
   alias cat="bat --paging=never"
+elif check_com -c batcat; then
+  alias cat="batcat --paging=never"
 fi
 
 if check_com -c yazi; then
