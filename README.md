@@ -120,6 +120,8 @@ Both **Ghostty** and **WezTerm** share the **Kanagawa** colour scheme (`backgrou
 | `tmux-notify` | Forwards tmux bell events to a webhook with full session context. See [tmux-notify](#tmux-notify) below. |
 | `dircolors` | Wrapper around `/usr/bin/dircolors` that prefers `~/.dircolors`, falls back to `/etc/DIR_COLORS`. |
 | `lscolors` | Displays every `LS_COLORS` entry in its assigned colour with type descriptions. Useful for auditing the dircolors database. |
+| `git-yolopull` | Git subcommand (`git yolopull <frombranch> [remotes...]`): merge a branch into the current one, then delete it locally + on selected remotes, with auto-stash. |
+| `git-yolopush` | Git subcommand (`git yolopush <targetbranch> [remotes...]`): merge the current branch into a target (or rename onto it if absent), then delete the current branch, with auto-stash. Multi-remote aware. |
 
 #### `usr/share/wireplumber/wireplumber.conf.d/`
 

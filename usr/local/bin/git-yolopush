@@ -1,0 +1,88 @@
+#!/bin/sh
+# git-yolopush: merge the current branch into a target, then delete the current branch
+# Standalone command (a git subcommand on your PATH). Kept as a script rather than a
+# multi-line git alias: alias values with embedded newlines break naive config parsers
+# (e.g. git-filter-repo). Run as: git yolopush ...
+f() {
+    if [ -z "$1" ]; then echo "Usage: git yolopush <targetbranch> [remotes...]"; return 1; fi;
+    target="$1"; shift;
+    frombranch=$(git rev-parse --abbrev-ref HEAD);
+    if [ "$target" = "$frombranch" ]; then echo "Error: Already on target branch"; return 1; fi;
+    all_remotes=$(git remote);
+    remote_count=$(echo "$all_remotes" | wc -l);
+    if [ $# -gt 0 ]; then
+        remotes="$*";
+    elif [ "$remote_count" -gt 1 ]; then
+        echo "Multiple remotes found:";
+        i=1; echo "$all_remotes" | while read r; do echo "  $i) $r"; i=$((i+1)); done;
+        printf "Select remotes (e.g. 1-3,5) or enter to skip: ";
+        read selection;
+        if [ -n "$selection" ]; then
+            remotes=$(echo "$selection" | tr "," "\n" | while read part; do
+                if echo "$part" | grep -q "-"; then
+                    start=$(echo "$part" | cut -d"-" -f1);
+                    end=$(echo "$part" | cut -d"-" -f2);
+                    seq "$start" "$end";
+                else
+                    echo "$part";
+                fi;
+            done | while read num; do echo "$all_remotes" | sed -n "${num}p"; done | tr "\n" " ");
+        else
+            remotes="";
+        fi;
+    elif [ "$remote_count" -eq 1 ]; then
+        remotes="$all_remotes";
+    else
+        remotes="";
+    fi;
+    if ! git rev-parse --verify "$target" >/dev/null 2>&1; then
+        echo "Target branch does not exist, renaming $frombranch to $target...";
+        git branch -m "$frombranch" "$target";
+        for remote in $remotes; do
+            if git ls-remote --exit-code --heads "$remote" "$frombranch" >/dev/null 2>&1; then
+                echo "Updating $remote: deleting old, pushing new...";
+                git push "$remote" --delete "$frombranch";
+                git push -u "$remote" "$target";
+            fi;
+        done;
+        git fetch --prune;
+        echo "Done!";
+        return 0;
+    fi;
+    stashed=0;
+    stash_result=$(git stash push -m "yolopush-auto-stash");
+    if ! echo "$stash_result" | grep -q "No local changes"; then
+        stashed=1;
+        echo "Stashed local changes";
+    fi;
+    git checkout "$target";
+    if git merge "$frombranch" 2>/dev/null; then
+        echo "Merge successful";
+    else
+        echo "Merge failed, aborting...";
+        git merge --abort 2>/dev/null;
+        git checkout "$frombranch";
+        if [ $stashed -eq 1 ]; then git stash pop; fi;
+        return 1;
+    fi;
+    if [ $stashed -eq 1 ]; then
+        echo "Popping stash...";
+        if ! git stash pop; then
+            echo "Error: Stash pop failed, reverting merge";
+            git reset --hard HEAD~1;
+            git checkout "$frombranch";
+            git stash pop 2>/dev/null;
+            return 1;
+        fi;
+    fi;
+    echo "Deleting $frombranch locally...";
+    git branch -d "$frombranch" 2>/dev/null || git branch -D "$frombranch";
+    for remote in $remotes; do
+        if git ls-remote --exit-code --heads "$remote" "$frombranch" >/dev/null 2>&1; then
+            echo "Deleting $frombranch from $remote...";
+            git push "$remote" --delete "$frombranch";
+        fi;
+    done;
+    git fetch --prune;
+    echo "Done!";
+}; f "$@"

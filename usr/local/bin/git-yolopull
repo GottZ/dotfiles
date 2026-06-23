@@ -1,0 +1,73 @@
+#!/bin/sh
+# git-yolopull: merge a branch into the current branch, then delete it
+# Standalone command (a git subcommand on your PATH). Kept as a script rather than a
+# multi-line git alias: alias values with embedded newlines break naive config parsers
+# (e.g. git-filter-repo). Run as: git yolopull ...
+f() {
+    if [ -z "$1" ]; then echo "Usage: git yolopull <frombranch> [remotes...]"; return 1; fi;
+    branch="$1"; shift;
+    current=$(git rev-parse --abbrev-ref HEAD);
+    if [ "$branch" = "$current" ]; then echo "Error: Cannot merge branch into itself"; return 1; fi;
+    all_remotes=$(git remote);
+    remote_count=$(echo "$all_remotes" | wc -l);
+    if [ $# -gt 0 ]; then
+        remotes="$*";
+    elif [ "$remote_count" -gt 1 ]; then
+        echo "Multiple remotes found:";
+        i=1; echo "$all_remotes" | while read r; do echo "  $i) $r"; i=$((i+1)); done;
+        printf "Select remotes (e.g. 1-3,5) or enter to skip: ";
+        read selection;
+        if [ -n "$selection" ]; then
+            remotes=$(echo "$selection" | tr "," "\n" | while read part; do
+                if echo "$part" | grep -q "-"; then
+                    start=$(echo "$part" | cut -d"-" -f1);
+                    end=$(echo "$part" | cut -d"-" -f2);
+                    seq "$start" "$end";
+                else
+                    echo "$part";
+                fi;
+            done | while read num; do echo "$all_remotes" | sed -n "${num}p"; done | tr "\n" " ");
+        else
+            remotes="";
+        fi;
+    elif [ "$remote_count" -eq 1 ]; then
+        remotes="$all_remotes";
+    else
+        remotes="";
+    fi;
+    stashed=0;
+    if git merge "$branch" 2>/dev/null; then
+        echo "Merge successful";
+    else
+        echo "Merge failed, stashing changes...";
+        git merge --abort 2>/dev/null;
+        stash_result=$(git stash push -m "yolopull-auto-stash");
+        if echo "$stash_result" | grep -q "No local changes"; then
+            echo "Error: Merge failed and no changes to stash"; return 1;
+        fi;
+        stashed=1;
+        if ! git merge "$branch"; then
+            echo "Error: Merge still fails after stashing";
+            git merge --abort 2>/dev/null;
+            git stash pop;
+            return 1;
+        fi;
+        echo "Merge successful after stashing, popping stash...";
+        if ! git stash pop; then
+            echo "Error: Stash pop failed, reverting merge";
+            git reset --hard HEAD~1;
+            git stash pop 2>/dev/null;
+            return 1;
+        fi;
+    fi;
+    echo "Deleting $branch locally...";
+    git branch -d "$branch" 2>/dev/null || git branch -D "$branch";
+    for remote in $remotes; do
+        if git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then
+            echo "Deleting $branch from $remote...";
+            git push "$remote" --delete "$branch";
+        fi;
+    done;
+    git fetch --prune;
+    echo "Done!";
+}; f "$@"
