@@ -52,16 +52,16 @@ fi
 # who knows where this goes in future..
 if check_com -c tmux; then
   if check_com -c hostnamectl; then
-    HOSTNAME="$(hostnamectl hostname)"
+    HOSTNAME="$(hostnamectl hostname | tr . _)"
   elif check_com -c hostname; then
-    HOSTNAME="$(hostname)"
+    HOSTNAME="$(hostname | tr . _)"
   else
-    HOSTNAME="$(cat /etc/hostname)"
+    HOSTNAME="$(cat /etc/hostname | tr . _)"
   fi
   if [[ -z "$HOSTNAME" ]]; then
     HOSTNAME="magic"
   fi
-  alias tmx="tmux new -As ${HOSTNAME}"
+  alias tmx="tmux new -As '${HOSTNAME}'"
 fi
 
 if check_com -c sudo; then
@@ -131,6 +131,10 @@ if check_com -c docker; then
 
   if ! check_com -c browsh; then
     alias browsh="docker run --rm -it --net=host browsh/browsh"
+  fi
+
+  if ! check_com -c hermes; then
+    alias hermes="docker exec -it hermes hermes"
   fi
 fi
 
